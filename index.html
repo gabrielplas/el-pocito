@@ -1275,10 +1275,12 @@ A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
   { name: 'url', label: 'Project URL', value: c.url, required: true, placeholder: 'https://xxxx.supabase.co', full: true },
   { name: 'key', label: 'Clave pública (anon / publishable key)', value: c.key, required: true, full: true }
 ], async v => {
-  const url = v.url.replace(/\/+$/, '');
-  try { const r = await fetch(url + '/rest/v1/registros?select=id&limit=1', { headers: sbHeaders(v.key) }); if (!r.ok) return 'No se pudo conectar (' + r.status + '). ¿Ya corriste el SQL?'; }
+  let url = v.url.trim().replace(/\/+$/, '').replace(/\/rest\/v1.*$/, '');
+  const m = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i); if (m) url = 'https://' + m[1] + '.supabase.co';
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) return 'La URL debe verse así: https://xxxxx.supabase.co (la escribiste como: ' + url + ')';
+  try { const r = await fetch(url + '/rest/v1/registros?select=id&limit=1', { headers: sbHeaders(v.key.trim()) }); if (!r.ok) { const t = await r.text(); return 'No se pudo conectar (' + r.status + '): ' + t.slice(0, 220) + (t.includes('PGRST205') || r.status === 404 ? ' → En SQL Editor corre: notify pgrst, \'reload schema\';  y vuelve a intentar.' : ''); } }
   catch (e) { return 'No se pudo conectar: ' + e.message; }
-  LS.set('pocito_sync', { url, key: v.key }); S.lastPull = null;
+  LS.set('pocito_sync', { url, key: v.key.trim() }); S.lastPull = null;
   COLS.forEach(col => S.cols[col].forEach(r => S.dirty[col + '|' + r.id] = r._u));
   await persistNow(); await sync();
 }, { wide: true, ok: 'Probar y conectar', toast: 'Conectado', intro: `<p class="small">1. Crea un proyecto gratis en supabase.com. 2. En <b>SQL Editor</b> corre este código una sola vez. 3. En <b>Project Settings → API</b> copia la URL y la clave pública.</p><code class="blk">${esc(SQL_SETUP)}</code><button type="button" class="btn sm mt" onclick="navigator.clipboard.writeText(SQL_SETUP).then(()=>toast('SQL copiado'))">Copiar SQL</button>` }); };
