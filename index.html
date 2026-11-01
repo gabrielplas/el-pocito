@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El Pocito · Administración</title>
+<meta name="theme-color" content="#1f4d3a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --bg:#f4f2ed; --card:#ffffff; --ink:#1d2320; --muted:#5f6a64; --line:#e2ded5;
+  --brand:#1f4d3a; --brand-2:#2f6b52; --brand-soft:#e3eee8;
+  --warn:#9a5b00; --warn-soft:#fbf0dc; --bad:#a8322a; --bad-soft:#fbe5e2; --ok:#22684a; --ok-soft:#e1f1e8;
+  --radius:14px; --fs:16px;
+}
+*{box-sizing:border-box}
+html{font-size:var(--fs)}
+body.big{--fs:19px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0 0 .5rem;line-height:1.2}
+h2{font-size:1.35rem} h3{font-size:1.08rem}
+a{color:var(--brand)}
+.muted{color:var(--muted)} .small{font-size:.86rem}
+.right{text-align:right} .nowrap{white-space:nowrap}
+/* Header */
+.top{position:sticky;top:0;z-index:20;background:var(--brand);color:#fff;padding:.6rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.top .title{font-weight:700;font-size:1.1rem;flex:1;min-width:140px}
+.top .title small{display:block;font-weight:400;opacity:.8;font-size:.8rem}
+.top button{background:rgba(255,255,255,.14);border:0;color:#fff;padding:.45rem .7rem;border-radius:10px;cursor:pointer}
+.top button:hover{background:rgba(255,255,255,.25)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#bbb}
+.dot.ok{background:#6fe0a5}.dot.err{background:#ff8a7a}
+nav.tabs{background:#fff;border-bottom:1px solid var(--line);padding:.4rem .75rem;display:flex;gap:.35rem;overflow-x:auto;position:sticky;top:0;z-index:15}
+nav.tabs .grp{display:flex;gap:.35rem;align-items:center}
+nav.tabs .grp+.grp{border-left:1px solid var(--line);padding-left:.5rem;margin-left:.2rem}
+nav.tabs .gl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-right:.2rem;white-space:nowrap}
+nav.tabs button{border:0;background:transparent;padding:.5rem .75rem;border-radius:10px;cursor:pointer;white-space:nowrap;color:var(--muted)}
+nav.tabs button.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:1rem}
+/* Cards & layout */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+.grid2>.card,.kpis>.card{margin-bottom:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-bottom:1rem}
+.kpi .lbl{font-size:.82rem;color:var(--muted)} .kpi .val{font-size:1.45rem;font-weight:700;margin-top:.15rem}
+.kpi.warn{background:var(--warn-soft);border-color:#f0d9ad}.kpi.bad{background:var(--bad-soft);border-color:#f1c4bd}
+.hero .big{font-size:2.1rem;font-weight:800;margin:.2rem 0}
+.hero.warn{background:var(--warn-soft)} .hero.ok{background:var(--ok-soft)}
+.lbl{font-size:.85rem;color:var(--muted)}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.row.sp{justify-content:space-between}
+.mt{margin-top:.75rem}
+.sect{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;margin:1.2rem 0 .6rem}
+.sect h2{margin:0}
+/* Buttons */
+.btn{border:1px solid var(--line);background:#fff;padding:.55rem .9rem;border-radius:10px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:#c9c3b6}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-2)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.ghost{background:transparent}
+.btn.sm{padding:.3rem .6rem;font-size:.85rem}
+.btn.lg{padding:.9rem 1.2rem;font-size:1.08rem}
+.link{background:none;border:0;color:var(--brand);cursor:pointer;padding:0;text-decoration:underline}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.quick button{border:1px solid var(--line);background:#faf9f6;border-radius:12px;padding:.85rem .6rem;cursor:pointer;font-weight:600;text-align:left}
+.quick button:hover{background:var(--brand-soft)}
+.quick button.danger{background:var(--bad-soft);color:var(--bad);border-color:#f1c4bd}
+.seg{display:inline-flex;background:#ece9e2;border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:.4rem .75rem;border-radius:8px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* Tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:#faf9f6;font-weight:600;color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tfoot td{font-weight:700;background:#faf9f6}
+.empty{padding:1.2rem;text-align:center;color:var(--muted)}
+.tag{display:inline-block;padding:.12rem .5rem;border-radius:20px;font-size:.78rem;background:#ece9e2;white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.bad{background:var(--bad-soft);color:var(--bad)}.tag.brand{background:var(--brand-soft);color:var(--brand)}
+.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer;vertical-align:middle}
+.notice{background:var(--warn-soft);border:1px solid #f0d9ad;border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem}
+.notice.info{background:var(--brand-soft);border-color:#c5dccf}
+.alert .btn{color:var(--bad);border-color:#fff}
+.alert{background:var(--bad);color:#fff;padding:1rem;border-radius:12px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;font-weight:600;animation:pulse 1.2s infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.85}}
+.list{display:flex;flex-direction:column;gap:.5rem}
+.item{border:1px solid var(--line);border-radius:12px;padding:.75rem;background:#fff;display:flex;justify-content:space-between;gap:.75rem;align-items:center;flex-wrap:wrap}
+.item .t{font-weight:600}
+/* Forms / modal */
+.modal-bg{position:fixed;inset:0;background:rgba(20,25,22,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto}
+.modal{background:#fff;border-radius:16px;padding:1.2rem;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal.wide{max-width:900px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:.8rem 0}
+.fld{display:flex;flex-direction:column;gap:.25rem}
+.fld.full,.fld:has(textarea){grid-column:1/-1}
+.fld span{font-size:.85rem;color:var(--muted);font-weight:500}
+.fld small{color:var(--muted);font-size:.78rem}
+.fld input,.fld select,.fld textarea{border:1px solid #d6d1c6;border-radius:10px;padding:.6rem .7rem;background:#fff;width:100%}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--brand-2);border-color:transparent}
+.chk{display:flex;gap:.5rem;align-items:center;grid-column:1/-1}
+.mact{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
+.imgfull{max-width:100%;border-radius:10px}
+/* Login */
+.login{max-width:760px;margin:0 auto;padding:2rem 1rem}
+.login h1{font-size:1.8rem;color:var(--brand)}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:1rem 0}
+.lgrid button{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1rem;cursor:pointer;text-align:left;min-height:84px}
+.lgrid button:hover{border-color:var(--brand);background:var(--brand-soft)}
+.lgrid button b{display:block;font-size:1.15rem}
+.lgrid button.alt{background:var(--brand);color:#fff;border-color:var(--brand)}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;max-width:300px;margin:1rem auto}
+.pinpad button{font-size:1.5rem;padding:.9rem;border-radius:14px;border:1px solid var(--line);background:#faf9f6;cursor:pointer}
+.pinpad button:active{background:var(--brand-soft)}
+.pindots{display:flex;justify-content:center;gap:.7rem;margin:.8rem 0}
+.pindots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--brand)}
+.pindots i.f{background:var(--brand)}
+.err{color:var(--bad);text-align:center;min-height:1.4em}
+/* Report */
+.report{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.5rem}
+.report h1{font-size:1.5rem}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:3rem}
+.sign div{border-top:1px solid #333;padding-top:.4rem;text-align:center}
+.bar{height:8px;background:#ece9e2;border-radius:6px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--brand-2)}
+.bar.over i{background:var(--bad)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2320;color:#fff;padding:.7rem 1.1rem;border-radius:12px;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+code.blk{display:block;white-space:pre-wrap;background:#1d2320;color:#d9f2e4;padding:.8rem;border-radius:10px;font-size:.8rem;overflow-x:auto}
+@media (max-width:640px){
+  .fields{grid-template-columns:1fr}
+  .quick{grid-template-columns:1fr}
+  main{padding:.75rem}
+  .hero .big{font-size:1.7rem}
+  .sign{grid-template-columns:1fr}
+}
+@media print{
+  .top,nav.tabs,.noprint,.btn,.toast{display:none!important}
+  body{background:#fff}
+  main{max-width:none;padding:0}
+  .report{border:0;padding:0}
+  .card,.tw{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modals"></div>
+<script>
+'use strict';
+/* ============ Constantes ============ */
+const APP_VER = '1.0';
+const COLS = ['config','casas','cargos','abonos','ingresos','gastos','transferencias','vigilantes','ausencias','turnos',
+  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas'];
+const CUENTAS = { banco: 'Cuenta bancaria', chica: 'Caja chica', vigilante: 'Fondo caseta' };
+const CATS = ['Vigilancia (nómina)','Coberturas / reemplazos','Basura','Jardinería','CFE (luz)','Agua','Mantenimiento',
+  'Limpieza','Administración / papelería','Extraordinario','Otros'];
+const TIPOS_VISITA = ['Visita','Familiar','Proveedor / servicio','Trabajador(a) del hogar','Paquetería','Taxi / app','Otro'];
+const TIPOS_AUS = { vacaciones: 'Vacaciones', descanso: 'Descanso', permiso: 'Permiso', incapacidad: 'Incapacidad', falta: 'Falta' };
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const NUM_CASAS = 7;
+const DEFAULT_CFG = { id: 'main', nombre: 'El Pocito', cuota: 0, casaAdmin: 1, anio: new Date().getFullYear(), pinSistema: '0000', presupuesto: {} };
+
+/* ============ Utilidades ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(+n || 0);
+const num = n => +n || 0;
+const pad = n => String(n).padStart(2, '0');
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => isoDate(new Date());
+const nowLocal = () => { const d = new Date(); return today() + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const ym = (d = today()) => String(d).slice(0, 7);
+const mesLabel = m => { if (!m) return ''; const [y, mm] = m.split('-'); return MESES[+mm - 1] + ' ' + y; };
+const toDate = d => new Date(String(d).length === 10 ? d + 'T12:00' : d);
+const fdate = d => d ? toDate(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const fdt = d => d ? toDate(d).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+const ftime = d => d ? toDate(d).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+const daysIncl = (a, b) => Math.round((toDate(b) - toDate(a)) / 864e5) + 1;
+const addDays = (d, n) => { const x = toDate(d); x.setDate(x.getDate() + n); return isoDate(x); };
+const sortBy = (arr, k, desc = true) => [...arr].sort((a, b) => (String(a[k] || '') < String(b[k] || '') ? -1 : String(a[k] || '') > String(b[k] || '') ? 1 : 0) * (desc ? -1 : 1));
+const sum = (arr, f = x => x.monto) => arr.reduce((s, x) => s + num(f(x)), 0);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ============ Almacenamiento local ============ */
+const memStore = {};
+const LS = {
+  get(k) { try { const v = localStorage.getItem(k); return v == null ? (memStore[k] ?? null) : JSON.parse(v); } catch (e) { return memStore[k] ?? null; } },
+  set(k, v) { memStore[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { delete memStore[k]; try { localStorage.removeItem(k); } catch (e) { } }
+};
+const IDB = {
+  db: null,
+  open() { return new Promise(res => { try { const r = indexedDB.open('elpocito', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => { this.db = r.result; res(true); }; r.onerror = () => res(false); } catch (e) { res(false); } }); },
+  get(k) { return new Promise(res => { if (!this.db) return res(memStore['idb_' + k] ?? null); try { const t = this.db.transaction('kv').objectStore('kv').get(k); t.onsuccess = () => res(t.result ?? null); t.onerror = () => res(null); } catch (e) { res(null); } }); },
+  set(k, v) { return new Promise(res => { if (!this.db) { memStore['idb_' + k] = v; return res(); } try { const tx = this.db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => res(); } catch (e) { res(); } }); }
+};
+
+/* ============ Estado y base de datos ============ */
+let S = { cols: {}, dirty: {}, lastPull: null };
+COLS.forEach(c => S.cols[c] = []);
+let SES = null;                 // sesión de este dispositivo
+const UI = { view: null, sub: {}, f: {} };
+
+let persistT = null, pushT = null;
+function persist() {
+  clearTimeout(persistT); persistT = setTimeout(persistNow, 200);
+  clearTimeout(pushT); pushT = setTimeout(sync, 1500);
+}
+function persistNow() { return IDB.set('state', JSON.parse(JSON.stringify(S))); }
+
+const db = {
+  all(c) { return S.cols[c].filter(r => !r._del); },
+  get(c, id) { return S.cols[c].find(r => r.id === id && !r._del); },
+  put(c, rec) {
+    rec = { ...rec };
+    if (!rec.id) rec.id = uid();
+    if (!rec.creado) rec.creado = new Date().toISOString();
+    rec._u = Date.now();
+    const i = S.cols[c].findIndex(r => r.id === rec.id);
+    if (i >= 0) S.cols[c][i] = rec; else S.cols[c].push(rec);
+    S.dirty[c + '|' + rec.id] = rec._u; persist(); return rec;
+  },
+  del(c, id) {
+    const i = S.cols[c].findIndex(r => r.id === id); if (i < 0) return;
+    const r = S.cols[c][i];
+    S.cols[c][i] = { id: r.id, creado: r.creado, _del: true, _u: Date.now() };
+    S.dirty[c + '|' + id] = S.cols[c][i]._u; persist();
+  }
+};
+const cfg = () => ({ ...DEFAULT_CFG, ...(S.cols.config.find(r => r.id === 'main') || {}) });
+const setCfg = p => db.put('config', { ...cfg(), ...p });
+const casaRec = n => db.get('casas', 'c' + n);
+const casaLabel = n => { if (n === 'caseta') return 'Caseta'; if (!n) return 'Condominio'; const c = casaRec(n); return 'Casa ' + n + (c && c.propietario ? ' · ' + c.propietario : ''); };
+const vigName = id => { const v = db.get('vigilantes', id); return v ? v.nombre : (id ? '—' : ''); };
+
+function ensureBase() {
+  if (!S.cols.config.find(r => r.id === 'main')) db.put('config', { ...DEFAULT_CFG });
+  for (let n = 1; n <= NUM_CASAS; n++) if (!S.cols.casas.find(r => r.id === 'c' + n)) db.put('casas', { id: 'c' + n, num: n, propietario: '', telefono: '', pin: String(n).repeat(4), cuota: null, emergencia: '', notas: '', mayor: false });
+}
+
+/* ============ Sincronización (Supabase) ============ */
+const syncCfg = () => LS.get('pocito_sync') || {};
+let syncState = { ok: null, msg: 'Modo local: los datos solo viven en este dispositivo', busy: false, last: null };
+let pendingRender = false;
+async function sync() {
+  const c = syncCfg();
+  if (!c.url || !c.key || syncState.busy) return;
+  syncState.busy = true; updSyncDot();
+  const base = c.url.replace(/\/+$/, '') + '/rest/v1/registros';
+  const H = { apikey: c.key, Authorization: 'Bearer ' + c.key, 'Content-Type': 'application/json' };
+  try {
+    const snap = { ...S.dirty };
+    const rows = Object.keys(snap).map(k => { const [col, id] = k.split('|'); const rec = S.cols[col] && S.cols[col].find(r => r.id === id); return rec ? { id: col + ':' + id, coleccion: col, data: rec } : null; }).filter(Boolean);
+    for (let i = 0; i < rows.length; i += 25) {
+      const r = await fetch(base, { method: 'POST', headers: { ...H, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows.slice(i, i + 25)) });
+      if (!r.ok) throw new Error('al subir (' + r.status + ') ' + (await r.text()).slice(0, 140));
+    }
+    Object.keys(snap).forEach(k => { if (S.dirty[k] === snap[k]) delete S.dirty[k]; });
+    let changed = false, more = true;
+    while (more) {
+      let q = base + '?select=coleccion,data,updated_at&order=updated_at.asc&limit=300';
+      if (S.lastPull) q += '&updated_at=gt.' + encodeURIComponent(S.lastPull);
+      const r = await fetch(q, { headers: H });
+      if (!r.ok) throw new Error('al descargar (' + r.status + ') ' + (await r.text()).slice(0, 140));
+      const rows2 = await r.json();
+      for (const row of rows2) {
+        const col = row.coleccion, d = row.data;
+        if (S.cols[col] && d && d.id) {
+          const i = S.cols[col].findIndex(x => x.id === d.id);
+          if (i < 0) { S.cols[col].push(d); changed = true; }
+          else if (num(d._u) > num(S.cols[col][i]._u)) { S.cols[col][i] = d; changed = true; }
+        }
+        S.lastPull = row.updated_at;
+      }
+      more = rows2.length === 300;
+    }
+    syncState = { ok: true, msg: 'Sincronizado', busy: false, last: new Date() };
+    await persistNow();
+    if (changed) render(true);
+  } catch (e) {
+    syncState = { ok: false, msg: 'Sin conexión con la nube: ' + e.message, busy: false, last: syncState.last };
+  }
+  syncState.busy = false; updSyncDot();
+}
+function updSyncDot() {
+  const d = document.getElementById('syncdot'); if (!d) return;
+  const c = syncCfg();
+  d.className = 'dot ' + (!c.url ? '' : syncState.ok ? 'ok' : syncState.ok === false ? 'err' : '');
+  d.title = syncState.msg + (syncState.last ? ' · ' + syncState.last.toLocaleTimeString('es-MX') : '');
+}
+
+/* ============ Cálculos ============ */
+const gastosValidos = () => db.all('gastos').filter(g => !g.estado || g.estado === 'aprobado');
+function saldoCasa(n) {
+  return sum(db.all('cargos').filter(c => c.casa == n)) - sum(db.all('abonos').filter(a => a.casa == n && a.estado === 'confirmado'));
+}
+function movimientos(c) {
+  const m = [];
+  db.all('abonos').forEach(a => { if (a.estado === 'confirmado' && a.cuenta === c) m.push({ fecha: a.fecha, concepto: 'Pago ' + casaLabel(a.casa) + (a.nota ? ' – ' + a.nota : ''), ent: num(a.monto) }); });
+  db.all('ingresos').forEach(i => { if (i.cuenta === c) m.push({ fecha: i.fecha, concepto: i.concepto, ent: num(i.monto) }); });
+  db.all('transferencias').forEach(t => {
+    if (t.a === c) m.push({ fecha: t.fecha, concepto: 'Recibido de ' + CUENTAS[t.de] + (t.nota ? ' – ' + t.nota : ''), ent: num(t.monto) });
+    if (t.de === c) m.push({ fecha: t.fecha, concepto: 'Enviado a ' + CUENTAS[t.a] + (t.nota ? ' – ' + t.nota : ''), sal: num(t.monto) });
+  });
+  gastosValidos().forEach(g => { if (g.cuenta === c) m.push({ fecha: g.fecha, concepto: g.categoria + ' – ' + g.concepto, sal: num(g.monto), g }); });
+  m.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+  let s = 0; m.forEach(x => { s += num(x.ent) - num(x.sal); x.saldo = s; });
+  return m;
+}
+const saldoCuenta = c => { const m = movimientos(c); return m.length ? m[m.length - 1].saldo : 0; };
+
+// Vacaciones según LFT (reforma 2023): 12 días el primer año, +2 por año hasta 20; luego +2 cada 5 años.
+function diasVacLFT(anios) { if (anios < 1) return 0; if (anios <= 5) return 12 + (anios - 1) * 2; return 20 + Math.ceil((anios - 5) / 5) * 2; }
+function vacInfo(v) {
+  const sd = num(v.sueldo) / ({ semanal: 7, quincenal: 15, mensual: 30 }[v.periodo] || 30);
+  if (!v.ingreso) return { sd, anios: 0, derecho: 0, tomados: 0, pend: 0, sinFecha: true };
+  const ing = toDate(v.ingreso), hoy = new Date();
+  let anios = hoy.getFullYear() - ing.getFullYear();
+  const aniv = new Date(ing); aniv.setFullYear(ing.getFullYear() + anios);
+  if (aniv > hoy) anios--;
+  const inicioPer = new Date(ing); inicioPer.setFullYear(ing.getFullYear() + Math.max(anios, 0));
+  const ini = isoDate(inicioPer);
+  const derecho = diasVacLFT(anios);
+  const tomados = db.all('ausencias').filter(a => a.vigilanteId === v.id && a.tipo === 'vacaciones' && a.desde >= ini).reduce((s, a) => s + daysIncl(a.desde, a.hasta), 0);
+  const proxAniv = new Date(inicioPer); proxAniv.setFullYear(inicioPer.getFullYear() + 1);
+  const y0 = new Date(hoy.getFullYear(), 0, 1); const desde = ing > y0 ? ing : y0;
+  const diasAnio = Math.min(365, Math.round((new Date(hoy.getFullYear(), 11, 31) - desde) / 864e5) + 1);
+  return { sd, anios, derecho, tomados, pend: derecho - tomados, ini, proxAniv: isoDate(proxAniv), prima: sd * derecho * 0.25, aguinaldo: sd * 15 * diasAnio / 365, diasAnio };
+}
+function ausenciasEn(fecha) { return db.all('ausencias').filter(a => a.desde <= fecha && a.hasta >= fecha); }
+function turnoActivo() { return sortBy(db.all('turnos').filter(t => !t.fin), 'inicio')[0] || null; }
+function estadoServicio(s) {
+  const pagos = sortBy(gastosValidos().filter(g => g.servicioId === s.id), 'fecha');
+  const ult = pagos[0];
+  const hoy = today();
+  let venc;
+  if (s.frecuencia === 'semanal') { venc = ult ? addDays(ult.fecha, 7) : hoy; }
+  else {
+    const meses = s.frecuencia === 'bimestral' ? 2 : 1;
+    if (ult) { const d = toDate(ult.fecha); d.setDate(1); d.setMonth(d.getMonth() + meses); const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(num(s.dia) || 1, dim)); venc = isoDate(d); }
+    else { const d = new Date(); const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(num(s.dia) || 1, dim)); venc = isoDate(d); }
+  }
+  const dias = Math.round((toDate(venc) - toDate(hoy)) / 864e5);
+  return { ult, venc, dias, cls: dias < 0 ? 'bad' : dias <= 5 ? 'warn' : 'ok', txt: dias < 0 ? 'Vencido hace ' + (-dias) + ' día(s)' : dias === 0 ? 'Vence hoy' : 'Vence en ' + dias + ' día(s)' };
+}
+
+/* ============ Archivos e imágenes ============ */
+function readFile(file) {
+  return new Promise((res, rej) => {
+    if (file.type.startsWith('image/')) {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => { const max = 1100; let { width: w, height: h } = img; if (w > max || h > max) { const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); } const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', .65)); };
+      img.onerror = () => rej(new Error('No se pudo leer la imagen'));
+      img.src = url;
+    } else {
+      if (file.size > 4 * 1024 * 1024) { toast('El archivo pesa más de 4 MB. Usa uno más ligero.'); return res(null); }
+      const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file);
+    }
+  });
+}
+function openData(dataUrl) {
+  if (!dataUrl) return;
+  if (dataUrl.startsWith('data:image')) return modal(`<img class="imgfull" src="${dataUrl}"><div class="mact"><button class="btn" onclick="closeModal()">Cerrar</button></div>`);
+  const [h, b] = dataUrl.split(','); const mime = h.slice(5).split(';')[0];
+  const bin = atob(b); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  window.open(URL.createObjectURL(new Blob([arr], { type: mime })), '_blank');
+}
+const FILES = {};
+function fileBtn(dataUrl) {
+  if (!dataUrl) return '<span class="muted small">—</span>';
+  const k = uid(); FILES[k] = dataUrl;
+  return dataUrl.startsWith('data:image') ? `<img class="thumb" src="${dataUrl}" onclick="openData(FILES['${k}'])" alt="comprobante">` : `<button class="btn sm" onclick="openData(FILES['${k}'])">Ver archivo</button>`;
+}
+
+/* ============ Modales y formularios ============ */
+function modal(html, wide) {
+  const el = document.createElement('div'); el.className = 'modal-bg';
+  el.innerHTML = `<div class="modal ${wide ? 'wide' : ''}">${html}</div>`;
+  el.addEventListener('mousedown', e => { if (e.target === el) closeModal(); });
+  $('#modals').appendChild(el);
+  const f = el.querySelector('input:not([type=hidden]):not([type=file]),select,textarea'); if (f && !('ontouchstart' in window)) f.focus();
+  return el;
+}
+function closeModal() { const m = $('#modals').lastElementChild; if (m) m.remove(); if (!$('#modals').children.length && pendingRender) { pendingRender = false; render(); } }
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+function confirmar(msg, fn, okTxt = 'Sí, continuar') {
+  modal(`<h3>${esc(msg)}</h3><div class="mact"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn danger" id="cfok">${esc(okTxt)}</button></div>`);
+  $('#cfok').onclick = () => { closeModal(); fn(); render(); };
+}
+function field(f) {
+  if (f.type === 'html') return f.html;
+  const v = f.value ?? '', req = f.required ? 'required' : '', full = f.full ? ' full' : '';
+  let inp;
+  switch (f.type) {
+    case 'select': inp = `<select name="${f.name}" ${req}>${f.options.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('')}</select>`; break;
+    case 'textarea': inp = `<textarea name="${f.name}" rows="3" ${req} placeholder="${esc(f.placeholder || '')}">${esc(v)}</textarea>`; break;
+    case 'file': inp = `<input type="file" name="${f.name}" accept="${f.accept || 'image/*'}">`; break;
+    case 'checkbox': return `<label class="chk"><input type="checkbox" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
+    case 'number': inp = `<input type="number" name="${f.name}" value="${esc(v)}" step="${f.step || '0.01'}" inputmode="decimal" ${req} ${f.min != null ? 'min="' + f.min + '"' : ''}>`; break;
+    default: inp = `<input type="${f.type || 'text'}" name="${f.name}" value="${esc(v)}" ${req} placeholder="${esc(f.placeholder || '')}" ${f.maxlength ? 'maxlength="' + f.maxlength + '"' : ''} ${f.inputmode ? 'inputmode="' + f.inputmode + '"' : ''}>`;
+  }
+  return `<label class="fld${full}"><span>${esc(f.label)}</span>${inp}${f.help ? `<small>${esc(f.help)}</small>` : ''}</label>`;
+}
+function openForm(title, fields, onSubmit, opts = {}) {
+  const el = modal(`<form id="mf" novalidate><h3>${esc(title)}</h3>${opts.intro || ''}<div class="fields">${fields.map(field).join('')}</div><div class="err" id="mferr"></div><div class="mact"><button type="button" class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="mfok">${esc(opts.ok || 'Guardar')}</button></div></form>`, opts.wide);
+  const form = el.querySelector('#mf');
+  form.onsubmit = async e => {
+    e.preventDefault();
+    for (const f of fields) if (f.required && f.name) { const inp = form.elements[f.name]; if (inp && !String(inp.value).trim()) { $('#mferr').textContent = 'Falta: ' + f.label; inp.focus(); return; } }
+    const btn = $('#mfok'); btn.disabled = true;
+    try {
+      const fd = new FormData(form), out = {};
+      for (const f of fields) {
+        if (!f.name) continue;
+        if (f.type === 'file') { const file = fd.get(f.name); out[f.name] = file && file.size ? await readFile(file) : (f.keep || null); }
+        else if (f.type === 'checkbox') out[f.name] = fd.get(f.name) === 'on';
+        else if (f.type === 'number') out[f.name] = fd.get(f.name) === '' ? null : parseFloat(fd.get(f.name));
+        else out[f.name] = (fd.get(f.name) ?? '').toString().trim();
+      }
+      const r = await onSubmit(out, form);
+      if (typeof r === 'string') { $('#mferr').textContent = r; btn.disabled = false; return; }
+      el.remove(); render(); if (opts.toast !== false) toast(opts.toast || 'Guardado');
+    } catch (err) { $('#mferr').textContent = err.message; btn.disabled = false; }
+  };
+}
+const cuentaOpts = (incl = ['banco', 'chica', 'vigilante']) => incl.map(k => [k, CUENTAS[k]]);
+const casaOpts = (blank) => (blank ? [['', blank]] : []).concat(Array.from({ length: NUM_CASAS }, (_, i) => [String(i + 1), casaLabel(i + 1)]));
+const vigOpts = (blank, soloActivos = true) => (blank ? [['', blank]] : []).concat(db.all('vigilantes').filter(v => !soloActivos || v.activo !== false).map(v => [v.id, v.nombre]));
+function downloadFile(name, text, type = 'application/json') { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+
+/* ============ Roles ============ */
+const isSistema = () => SES && SES.tipo === 'sistema';
+const isCaseta = () => SES && SES.tipo === 'caseta';
+const isCasa = () => SES && SES.tipo === 'casa';
+const isAdmin = () => isSistema() || (isCasa() && String(SES.casa) === String(cfg().casaAdmin));
+const quien = () => isSistema() ? 'Sistema' : isCaseta() ? 'Caseta (' + vigName(SES.vigilanteId) + ')' : 'Casa ' + SES.casa;
+
+/* ============ Login ============ */
+let LOGIN = { paso: 'inicio', target: null, pin: '' };
+function loginView() {
+  const c = cfg();
+  if (LOGIN.paso === 'vig') {
+    const vs = db.all('vigilantes').filter(v => v.activo !== false);
+    return `<div class="login"><h1>Caseta</h1><p class="muted">¿Quién está de turno?</p>
+      <div class="lgrid">${vs.map(v => `<button onclick="loginPin({tipo:'caseta',vigilanteId:'${v.id}'},'${esc(v.nombre)}')"><b>${esc(v.nombre)}</b><span class="muted small">${v.rol === 'reemplazo' ? 'Reemplazo' : 'Titular'}</span></button>`).join('') || '<div class="card">Aún no hay vigilantes dados de alta. El administrador debe agregarlos en Vigilancia.</div>'}</div>
+      <button class="btn" onclick="LOGIN.paso='inicio';render()">← Regresar</button></div>`;
+  }
+  return `<div class="login"><h1>${esc(c.nombre)}</h1><p class="muted">Administración del condominio · Administra este año: <b>${esc(casaLabel(c.casaAdmin))}</b></p>
+    <div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = casaRec(i + 1) || {}; return `<button onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
+      <button class="alt" onclick="LOGIN.paso='vig';render()"><b>Caseta</b><span class="small">Vigilante de turno</span></button>
+      <button onclick="loginPin({tipo:'sistema'},'Administrador del sistema')"><b>Sistema</b><span class="muted small">Administrador de la herramienta</span></button>
+    </div>
+    <p class="small muted">Entra con tu PIN de 4 dígitos. ${syncCfg().url ? '' : 'Este dispositivo está en modo local.'}</p></div>`;
+}
+function loginPin(target, label) {
+  LOGIN.target = target; LOGIN.pin = '';
+  const el = modal(`<h3 style="text-align:center">${esc(label)}</h3><p class="muted small" style="text-align:center">Escribe tu PIN</p>
+    <div class="pindots" id="pdots"></div><div class="err" id="perr"></div>
+    <div class="pinpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button onclick="pinKey('${n}')">${n}</button>`).join('')}<button onclick="closeModal()" style="font-size:1rem">Cancelar</button><button onclick="pinKey('0')">0</button><button onclick="pinKey('del')" style="font-size:1rem">Borrar</button></div>`);
+  el.tabIndex = 0; el.focus();
+  el.addEventListener('keydown', e => { if (/^[0-9]$/.test(e.key)) pinKey(e.key); else if (e.key === 'Backspace') pinKey('del'); });
+  pinDots();
+}
+function pinDots() { const d = $('#pdots'); if (d) d.innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < LOGIN.pin.length ? 'f' : ''}"></i>`).join(''); }
+function pinKey(k) {
+  if (k === 'del') LOGIN.pin = LOGIN.pin.slice(0, -1); else if (LOGIN.pin.length < 4) LOGIN.pin += k;
+  pinDots();
+  if (LOGIN.pin.length === 4) {
+    const t = LOGIN.target; let ok = false;
+    if (t.tipo === 'casa') ok = (casaRec(t.casa) || {}).pin === LOGIN.pin;
+    if (t.tipo === 'sistema') ok = cfg().pinSistema === LOGIN.pin;
+    if (t.tipo === 'caseta') ok = (db.get('vigilantes', t.vigilanteId) || {}).pin === LOGIN.pin;
+    if (!ok) { $('#perr').textContent = 'PIN incorrecto'; LOGIN.pin = ''; setTimeout(pinDots, 300); return; }
+    closeModal();
+    SES = { ...t };
+    if (t.tipo === 'caseta') {
+      const act = turnoActivo();
+      if (act && act.vigilanteId === t.vigilanteId) SES.turnoId = act.id;
+      else {
+        if (act) db.put('turnos', { ...act, fin: new Date().toISOString(), notasEntrega: (act.notasEntrega || '') + ' [cerrado al iniciar el siguiente turno]' });
+        SES.turnoId = db.put('turnos', { vigilanteId: t.vigilanteId, inicio: new Date().toISOString(), fin: null }).id;
+      }
+    }
+    LS.set('pocito_ses', SES); LOGIN.paso = 'inicio'; UI.view = null; render();
+  }
+}
+function logout() { SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
+
+/* ============ Layout ============ */
+function tabsFor() {
+  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['servicios', 'Servicios'], ['reportes', 'Reportes']];
+  if (isCaseta()) return [{ items: [['c_visitas', 'Visitas'], ['c_paquetes', 'Paquetes'], ['c_caja', 'Caja caseta'], ['c_casas', 'Casas y emergencias'], ['c_turno', 'Mi turno']] }];
+  if (isSistema()) return [{ t: 'Administración', items: admin }, { t: 'General', items: [['comunidad', 'Comunidad'], ['sistema', 'Sistema']] }];
+  const g = [{ t: isAdmin() ? 'Mi casa' : '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Mis visitas'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad']] }];
+  if (isAdmin()) g.push({ t: 'Administración', items: admin });
+  return g;
+}
+function go(v, sub) { UI.view = v; if (sub) UI.sub[v] = sub; render(); window.scrollTo(0, 0); }
+function setSub(v, s) { UI.sub[v] = s; render(); }
+function seg(v, opts, def) { const cur = UI.sub[v] || def; return `<div class="seg">${opts.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" onclick="setSub('${v}','${k}')">${esc(l)}</button>`).join('')}</div>`; }
+function render(fromSync) {
+  if (fromSync && $('#modals').children.length) { pendingRender = true; return; }
+  const app = $('#app');
+  document.body.classList.toggle('big', !!LS.get('pocito_big'));
+  if (!SES) { app.innerHTML = loginView(); return; }
+  if (isCaseta() && !db.get('turnos', SES.turnoId)) { /* turno cerrado en otro lado */ }
+  const groups = tabsFor(); const all = groups.flatMap(g => g.items.map(i => i[0]));
+  if (!all.includes(UI.view)) UI.view = all[0];
+  const c = cfg();
+  const alertas = (isCaseta() || isAdmin()) ? db.all('alertas').filter(a => !a.atendida) : [];
+  let body = '';
+  try { body = V[UI.view](); } catch (e) { console.error(e); body = `<div class="card">Error al mostrar esta sección: ${esc(e.message)}</div>`; }
+  app.innerHTML = `<header class="top"><div class="title">${esc(c.nombre)}<small>${esc(quien())}${isAdmin() && isCasa() ? ' · Administrador ' + c.anio : ''}</small></div>
+    <span id="syncdot" class="dot" title=""></span>
+    <button onclick="toggleBig()" title="Tamaño de letra">A A</button>
+    ${isCaseta() ? `<button onclick="A.entregarTurno()">Entregar turno</button>` : `<button onclick="logout()">Salir</button>`}</header>
+    <nav class="tabs">${groups.map(g => `<div class="grp">${g.t ? `<span class="gl">${esc(g.t)}</span>` : ''}${g.items.map(([k, l]) => `<button class="${UI.view === k ? 'on' : ''}" onclick="go('${k}')">${esc(l)}</button>`).join('')}</div>`).join('')}</nav>
+    <main>${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${body}</main>`;
+  updSyncDot();
+}
+function toggleBig() { LS.set('pocito_big', !LS.get('pocito_big')); render(); }
+
+/* ============ Componentes ============ */
+const V = {};
+function table(cols, rows, foot, emptyMsg = 'Sin registros') {
+  if (!rows.length) return `<div class="tw"><div class="empty">${esc(emptyMsg)}</div></div>`;
+  return `<div class="tw"><table><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}">${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody>${foot ? `<tfoot><tr>${foot.map((f, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${f}</td>`).join('')}</tr></tfoot>` : ''}</table></div>`;
+}
+const kpi = (lbl, val, cls = '', sub = '') => `<div class="card kpi ${cls}"><div class="lbl">${esc(lbl)}</div><div class="val">${val}</div>${sub ? `<div class="small muted">${sub}</div>` : ''}</div>`;
+const tagEstado = e => ({ pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
+const mesFiltro = (key, label = 'Mes') => { const v = UI.f[key] ?? ym(); return `<label class="fld" style="max-width:200px"><span>${label}</span><input type="month" value="${v}" onchange="UI.f['${key}']=this.value;render()"></label>`; };
+function estadoCuentaRows(n) {
+  const m = [];
+  db.all('cargos').filter(c => c.casa == n).forEach(c => m.push({ fecha: c.fecha, concepto: c.concepto, cargo: num(c.monto), tipo: c.tipo, id: c.id, col: 'cargos' }));
+  db.all('abonos').filter(a => a.casa == n).forEach(a => m.push({ fecha: a.fecha, concepto: (a.metodo === 'compensacion' ? 'Compensación: ' : 'Pago ' + (a.metodo || '') + ' ') + (a.nota || ''), abono: a.estado === 'confirmado' ? num(a.monto) : 0, pend: a.estado !== 'confirmado' ? a : null, est: a.estado, comp: a.comprobante, id: a.id, col: 'abonos' }));
+  m.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : (a.cargo ? -1 : 1));
+  let s = 0; m.forEach(x => { s += num(x.cargo) - num(x.abono); x.saldo = s; });
+  return m;
+}
+function estadoCuentaTable(n, adminMode) {
+  const rows = estadoCuentaRows(n).reverse();
+  return table([
+    { h: 'Fecha', f: r => fdate(r.fecha) },
+    { h: 'Concepto', f: r => esc(r.concepto) + (r.tipo === 'especial' ? ' <span class="tag brand">Especial</span>' : '') + (r.est && r.est !== 'confirmado' ? ' ' + tagEstado(r.est) : '') },
+    { h: 'Cargo', num: 1, f: r => r.cargo ? money(r.cargo) : '' },
+    { h: 'Abono', num: 1, f: r => r.abono ? money(r.abono) : (r.pend ? `<span class="muted">${money(r.pend.monto)}</span>` : '') },
+    { h: 'Saldo', num: 1, f: r => money(r.saldo) },
+    { h: '', f: r => (r.comp ? fileBtn(r.comp) : '') + (adminMode ? ` <button class="btn sm" onclick="A.borrar('${r.col}','${r.id}')">Borrar</button>` : '') }
+  ], rows, null, 'Aún no hay movimientos');
+}
+
+/* ============ Vistas: Casa ============ */
+V.inicio = () => {
+  const n = SES.casa, s = saldoCasa(n), c = cfg();
+  const paq = db.all('paquetes').filter(p => p.casa == n && !p.entregado);
+  const prer = sortBy(db.all('preregistros').filter(p => p.casa == n && p.fecha >= today() && p.estado !== 'llegó'), 'fecha', false);
+  const avisos = sortBy(db.all('avisos'), 'fecha').slice(0, 3);
+  const pend = db.all('abonos').filter(a => a.casa == n && a.estado === 'pendiente').length;
+  return `${paq.length ? `<div class="notice">Tienes ${paq.length} paquete(s) esperándote en caseta: ${paq.map(p => esc(p.empresa || p.descripcion || 'paquete')).join(', ')}</div>` : ''}
+  <div class="grid2">
+    <div class="card hero ${s > 0.009 ? 'warn' : 'ok'}"><div class="lbl">Saldo de Casa ${n}</div><div class="big">${money(Math.abs(s))}</div>
+      <div>${s > 0.009 ? 'Por pagar' : s < -0.009 ? 'Saldo a favor' : 'Al corriente'}${pend ? ` · ${pend} pago(s) por confirmar` : ''}</div>
+      <div class="row mt"><button class="btn primary" onclick="A.pagoCasa(${n})">Registrar un pago</button><button class="btn" onclick="go('micuenta')">Estado de cuenta</button></div></div>
+    <div class="card"><h3>¿Qué necesitas?</h3><div class="quick">
+      <button onclick="A.prereg(${n})">Avisar que viene una visita</button>
+      <button onclick="A.incidencia(${n})">Reportar un problema</button>
+      <button onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button>
+      <button class="danger" onclick="A.emergencia(${n})">Emergencia: avisar a caseta</button></div></div>
+  </div>
+  <div class="grid2 mt">
+    <div class="card"><div class="row sp"><h3>Avisos</h3><button class="link" onclick="go('comunidad','avisos')">Ver todos</button></div>${avisos.length ? avisos.map(avisoHtml).join('') : '<p class="muted">Sin avisos</p>'}</div>
+    <div class="card"><h3>Visitas que esperas</h3>${prer.length ? `<div class="list">${prer.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${fdate(p.fecha)} ${esc(p.nota || '')}</div></div><button class="btn sm" onclick="A.borrar('preregistros','${p.id}')">Cancelar</button></div>`).join('')}</div>` : '<p class="muted">No has avisado de visitas próximas.</p>'}
+      <p class="small muted mt">Administra este año: ${esc(casaLabel(c.casaAdmin))}</p></div>
+  </div>`;
+};
+V.micuenta = () => {
+  const n = SES.casa, s = saldoCasa(n), r = casaRec(n) || {};
+  return `<div class="sect"><h2>Estado de cuenta · Casa ${n}</h2><div class="row"><button class="btn primary" onclick="A.pagoCasa(${n})">Registrar pago</button><button class="btn" onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button><button class="btn" onclick="A.miCasa(${n})">Mis datos y contactos</button></div></div>
+  <div class="kpis">${kpi(s > 0 ? 'Por pagar' : 'Saldo a favor', money(Math.abs(s)), s > 0.009 ? 'warn' : '')}${kpi('Cuota mensual', money(r.cuota != null && r.cuota !== '' ? r.cuota : cfg().cuota))}</div>
+  ${estadoCuentaTable(n)}
+  <h3 class="mt">Gastos que pagué por el condominio</h3>
+  ${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Concepto', f: g => esc(g.categoria + ' – ' + g.concepto) }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: 'Estado', f: g => tagEstado(g.estado || 'aprobado') }, { h: '', f: g => fileBtn(g.comprobante) }],
+    sortBy(db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n), 'fecha'), null, 'Ninguno')}`;
+};
+V.visitas = () => {
+  const n = SES.casa;
+  const prer = sortBy(db.all('preregistros').filter(p => p.casa == n), 'fecha').slice(0, 30);
+  const frec = db.all('frecuentes').filter(p => p.casa == n);
+  const hist = sortBy(db.all('visitas').filter(v => v.casa == n), 'entrada').slice(0, 60);
+  return `<div class="sect"><h2>Mis visitas</h2><div class="row"><button class="btn primary" onclick="A.prereg(${n})">Avisar visita</button><button class="btn" onclick="A.frecuente(${n})">Agregar autorizado permanente</button></div></div>
+  <div class="grid2"><div class="card"><h3>Avisos a caseta</h3>${prer.length ? `<div class="list">${prer.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${fdate(p.fecha)} · ${p.estado === 'llegó' ? 'Ya llegó' : 'Esperado'} ${esc(p.nota || '')}</div></div>${p.estado !== 'llegó' ? `<button class="btn sm" onclick="A.borrar('preregistros','${p.id}')">Cancelar</button>` : ''}</div>`).join('')}</div>` : '<p class="muted">Sin avisos.</p>'}</div>
+  <div class="card"><h3>Autorizados permanentes</h3><p class="small muted">Personas que entran seguido (jardinero, familiares, enfermera, trabajadora del hogar).</p>${frec.length ? `<div class="list">${frec.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${esc(p.motivo || '')} ${esc(p.dias || '')}</div></div><button class="btn sm" onclick="A.borrar('frecuentes','${p.id}')">Quitar</button></div>`).join('')}</div>` : '<p class="muted">Ninguno.</p>'}</div></div>
+  <h3 class="mt">Historial de entradas</h3>${visitasTable(hist, false)}`;
+};
+function visitasTable(rows, conCasa = true, acciones = false) {
+  return table([
+    ...(conCasa ? [{ h: 'Casa', f: v => 'Casa ' + v.casa }] : []),
+    { h: 'Nombre', f: v => `<b>${esc(v.nombre)}</b>${v.placas ? `<div class="small muted">${esc(v.placas)}</div>` : ''}` },
+    { h: 'Tipo', f: v => esc(v.tipo) },
+    { h: 'Entrada', f: v => fdt(v.entrada) },
+    { h: 'Salida', f: v => v.salida ? ftime(v.salida) : (acciones ? `<button class="btn sm primary" onclick="A.salida('${v.id}')">Marcar salida</button>` : '<span class="tag warn">Dentro</span>') },
+    { h: 'Registró', f: v => esc(vigName(v.vigilanteId)) },
+    { h: 'Nota', f: v => esc(v.nota || '') + (v.foto ? ' ' + fileBtn(v.foto) : '') }
+  ], rows, null, 'Sin visitas registradas');
+}
+V.finanzas = () => {
+  const m = UI.f.finMes || ym();
+  const g = gastosValidos().filter(x => ym(x.fecha) === m);
+  const porCat = CATS.map(c => [c, sum(g.filter(x => x.categoria === c))]).filter(x => x[1] > 0);
+  const total = sum(g);
+  return `<div class="sect"><h2>Finanzas del condominio</h2>${mesFiltro('finMes')}</div>
+  <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}${kpi('Gastos de ' + mesLabel(m), money(total))}</div>
+  <div class="grid2"><div class="card"><h3>Gastos por categoría</h3>${porCat.length ? porCat.map(([c, v]) => `<div class="row sp small" style="margin:.35rem 0"><span>${esc(c)}</span><b>${money(v)}</b></div><div class="bar"><i style="width:${Math.round(v / total * 100)}%"></i></div>`).join('') : '<p class="muted">Sin gastos este mes</p>'}</div>
+  <div class="card"><h3>Estado de cuenta por casa</h3>${Array.from({ length: NUM_CASAS }, (_, i) => { const s = saldoCasa(i + 1); return `<div class="row sp" style="margin:.3rem 0"><span>Casa ${i + 1}</span>${s > 0.009 ? `<span class="tag warn">Debe ${money(s)}</span>` : s < -0.009 ? `<span class="tag ok">A favor ${money(-s)}</span>` : '<span class="tag ok">Al corriente</span>'}</div>`; }).join('')}</div></div>
+  <h3 class="mt">Detalle de gastos · ${mesLabel(m)}</h3>${gastosTable(sortBy(g, 'fecha'), false)}`;
+};
+function gastosTable(rows, admin) {
+  return table([
+    { h: 'Fecha', f: g => fdate(g.fecha) },
+    { h: 'Categoría', f: g => esc(g.categoria) },
+    { h: 'Concepto', f: g => esc(g.concepto) + (g.proveedor ? `<div class="small muted">${esc(g.proveedor)}</div>` : '') },
+    { h: 'Pagado de', f: g => g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + ' (compensa cuota)' : esc(CUENTAS[g.cuenta] || g.cuenta) },
+    { h: 'Monto', num: 1, f: g => money(g.monto) },
+    { h: 'Comprobante', f: g => fileBtn(g.comprobante) },
+    ...(admin ? [{ h: '', f: g => `<span class="nowrap">${g.estado === 'pendiente' ? `<button class="btn sm primary" onclick="A.aprobarGasto('${g.id}')">Aprobar</button> <button class="btn sm" onclick="A.rechazarGasto('${g.id}')">Rechazar</button>` : `<button class="btn sm" onclick="A.gasto('${g.id}')">Editar</button> <button class="btn sm" onclick="A.borrarGasto('${g.id}')">Borrar</button>`}</span>` }] : [])
+  ], rows, [ 'Total', '', '', '', money(sum(rows)), '', ...(admin ? [''] : [])], 'Sin gastos');
+}
+function avisoHtml(a) {
+  let vot = '';
+  if (a.votacion) {
+    const votos = db.all('votos').filter(v => v.avisoId === a.id);
+    const opts = (a.opciones || 'Sí,No').split(',').map(s => s.trim()).filter(Boolean);
+    const mio = isCasa() ? votos.find(v => v.casa == SES.casa) : null;
+    const abierta = !a.cierra || a.cierra >= today();
+    vot = `<div class="mt"><div class="row">${opts.map(o => { const c = votos.filter(v => v.opcion === o).length; return `<button class="btn sm ${mio && mio.opcion === o ? 'primary' : ''}" ${isCasa() && abierta ? `onclick="A.votar('${a.id}','${esc(o)}')"` : 'disabled'}>${esc(o)} · ${c}</button>`; }).join('')}</div><div class="small muted">${votos.length} de ${NUM_CASAS} casas han votado${a.cierra ? ' · cierra ' + fdate(a.cierra) : ''}${!abierta ? ' · votación cerrada' : ''}</div></div>`;
+  }
+  return `<div style="border-bottom:1px solid var(--line);padding:.6rem 0"><div class="row sp"><b>${esc(a.titulo)}</b><span class="small muted">${fdate(a.fecha)}</span></div><div style="white-space:pre-wrap">${esc(a.texto || '')}</div>${a.archivo ? '<div class="mt">' + fileBtn(a.archivo) + '</div>' : ''}${vot}${isAdmin() ? `<div class="mt"><button class="btn sm" onclick="A.borrar('avisos','${a.id}')">Borrar aviso</button></div>` : ''}</div>`;
+}
+V.comunidad = () => {
+  const sub = UI.sub.comunidad || 'avisos';
+  let html = '';
+  if (sub === 'avisos') html = `<div class="card">${isAdmin() ? `<div class="row sp"><h3>Avisos y votaciones</h3><button class="btn primary" onclick="A.aviso()">Publicar aviso o votación</button></div>` : '<h3>Avisos y votaciones</h3>'}${sortBy(db.all('avisos'), 'fecha').map(avisoHtml).join('') || '<p class="muted">Sin avisos</p>'}</div>`;
+  if (sub === 'incidencias') {
+    const rows = sortBy(db.all('incidencias'), 'fecha');
+    html = `<div class="sect"><h3>Reportes de problemas</h3><button class="btn primary" onclick="A.incidencia(${isCasa() ? SES.casa : "''"})">Reportar problema</button></div>` + table([
+      { h: 'Fecha', f: r => fdate(r.fecha) }, { h: 'Reportó', f: r => esc(casaLabel(r.casa)) }, { h: 'Problema', f: r => `<b>${esc(r.titulo)}</b><div class="small">${esc(r.desc || '')}</div>${r.respuesta ? `<div class="small muted">Respuesta: ${esc(r.respuesta)}</div>` : ''}` },
+      { h: 'Foto', f: r => fileBtn(r.foto) }, { h: 'Estado', f: r => tagEstado(r.estado) },
+      ...(isAdmin() ? [{ h: '', f: r => `<button class="btn sm" onclick="A.seguimiento('${r.id}')">Seguimiento</button>` }] : [])], rows, null, 'Sin reportes');
+  }
+  if (sub === 'documentos') {
+    html = `<div class="sect"><h3>Documentos</h3>${isAdmin() ? '<button class="btn primary" onclick="A.documento()">Subir documento</button>' : ''}</div>` + table([
+      { h: 'Documento', f: d => `<b>${esc(d.nombre)}</b>` }, { h: 'Tipo', f: d => esc(d.categoria) }, { h: 'Fecha', f: d => fdate(d.fecha) }, { h: '', f: d => fileBtn(d.archivo) + (isAdmin() ? ` <button class="btn sm" onclick="A.borrar('documentos','${d.id}')">Borrar</button>` : '') }],
+      sortBy(db.all('documentos'), 'fecha'), null, 'Sube aquí el reglamento, actas de asamblea, contratos y pólizas.');
+  }
+  if (sub === 'directorio') html = directorioHtml(isAdmin());
+  return `<div class="sect"><h2>Comunidad</h2>${seg('comunidad', [['avisos', 'Avisos'], ['incidencias', 'Problemas'], ['documentos', 'Documentos'], ['directorio', 'Directorio']], 'avisos')}</div>${html}`;
+};
+function directorioHtml(admin) {
+  const casas = Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1) || { num: i + 1 });
+  return `<h3>Vecinos</h3>${table([{ h: 'Casa', f: c => 'Casa ' + c.num }, { h: 'Propietario', f: c => esc(c.propietario || '') }, { h: 'Teléfono', f: c => c.telefono ? `<a href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a>` : '' }], casas)}
+  <div class="sect"><h3>Proveedores y emergencias</h3>${admin ? '<button class="btn primary" onclick="A.contacto()">Agregar contacto</button>' : ''}</div>
+  ${table([{ h: 'Nombre', f: d => `<b>${esc(d.nombre)}</b>` }, { h: 'Servicio', f: d => esc(d.servicio || '') }, { h: 'Teléfono', f: d => `<a href="tel:${esc(d.telefono)}">${esc(d.telefono || '')}</a>` }, { h: 'Nota', f: d => esc(d.nota || '') + (admin && d.id ? ` <button class="btn sm" onclick="A.contacto('${d.id}')">Editar</button>` : '') }],
+    [{ nombre: 'Emergencias', servicio: 'Policía, ambulancia, bomberos', telefono: '911', id: '' }, ...sortBy(db.all('directorio'), 'servicio', false)].map(d => d.id === '' ? { ...d, nota: '' } : d))}`;
+}
+
+/* ============ Vistas: Administración ============ */
+V.panel = () => {
+  const c = cfg(), m = ym();
+  const porCobrar = Array.from({ length: NUM_CASAS }, (_, i) => Math.max(0, saldoCasa(i + 1))).reduce((a, b) => a + b, 0);
+  const pagosPend = db.all('abonos').filter(a => a.estado === 'pendiente');
+  const gastosPend = db.all('gastos').filter(g => g.estado === 'pendiente');
+  const gMes = sum(gastosValidos().filter(g => ym(g.fecha) === m));
+  const serv = db.all('servicios').map(s => ({ s, e: estadoServicio(s) })).filter(x => x.e.dias <= 7).sort((a, b) => a.e.dias - b.e.dias);
+  const t = turnoActivo(); const aus = ausenciasEn(today());
+  const inc = db.all('incidencias').filter(i => i.estado !== 'resuelta');
+  const prox = db.all('ausencias').filter(a => a.desde > today() && a.desde <= addDays(today(), 30));
+  return `<div class="sect"><h2>Panel de administración ${c.anio}</h2><span class="muted">Administra: ${esc(casaLabel(c.casaAdmin))}</span></div>
+  <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}
+    ${kpi('Por cobrar a casas', money(porCobrar), porCobrar > 0 ? 'warn' : '')}${kpi('Gastos del mes', money(gMes))}</div>
+  ${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
+  <div class="grid2">
+    <div class="card"><h3>Caseta hoy</h3><p>De turno: <b>${t ? esc(vigName(t.vigilanteId)) + '</b> desde ' + fdt(t.inicio) : 'Nadie ha iniciado turno</b>'}</p>
+      ${aus.length ? aus.map(a => `<div class="small">${esc(vigName(a.vigilanteId))}: ${TIPOS_AUS[a.tipo]} · cubre <b>${esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || 'sin asignar')}</b></div>`).join('') : '<div class="small muted">Sin ausencias hoy</div>'}
+      ${prox.length ? `<div class="small mt"><b>Próximos 30 días:</b> ${prox.map(a => esc(vigName(a.vigilanteId)) + ' ' + fdate(a.desde)).join(', ')}</div>` : ''}
+      <div class="mt"><button class="btn sm" onclick="go('vigilancia')">Ir a Vigilancia</button></div></div>
+    <div class="card"><h3>Pagos por vencer</h3>${serv.length ? serv.map(({ s, e }) => `<div class="row sp" style="margin:.35rem 0"><span>${esc(s.nombre)} <span class="small muted">${s.responsable === 'caseta' ? '(lo paga caseta)' : ''}</span></span><span class="tag ${e.cls}">${e.txt}</span></div>`).join('') : '<p class="muted">Nada vence en los próximos 7 días.</p>'}<div class="mt"><button class="btn sm" onclick="go('servicios')">Ver servicios</button></div></div>
+    <div class="card"><h3>Saldos por casa</h3>${Array.from({ length: NUM_CASAS }, (_, i) => { const s = saldoCasa(i + 1); return `<div class="row sp" style="margin:.3rem 0"><button class="link" onclick="A.verCasa(${i + 1})">${esc(casaLabel(i + 1))}</button>${s > 0.009 ? `<span class="tag warn">${money(s)}</span>` : s < -0.009 ? `<span class="tag ok">A favor ${money(-s)}</span>` : '<span class="tag ok">Al corriente</span>'}</div>`; }).join('')}</div>
+    <div class="card"><h3>Problemas abiertos</h3>${inc.length ? inc.slice(0, 6).map(i => `<div class="row sp" style="margin:.3rem 0"><span>${esc(i.titulo)} <span class="small muted">${esc(casaLabel(i.casa))}</span></span>${tagEstado(i.estado)}</div>`).join('') : '<p class="muted">Ninguno</p>'}<div class="mt"><button class="btn sm" onclick="go('comunidad','incidencias')">Ver todos</button></div></div>
+  </div>`;
+};
+V.cuotas = () => {
+  const pend = db.all('abonos').filter(a => a.estado === 'pendiente');
+  const casas = Array.from({ length: NUM_CASAS }, (_, i) => i + 1);
+  return `<div class="sect"><h2>Cuotas y pagos</h2><div class="row"><button class="btn primary" onclick="A.generarCuotas()">Generar cuotas del mes</button><button class="btn" onclick="A.cuotaEspecial()">Cuota especial</button><button class="btn" onclick="A.cargo()">Cargo a una casa</button><button class="btn" onclick="A.pagoAdmin()">Registrar pago</button></div></div>
+  ${pend.length ? `<div class="card"><h3>Pagos por confirmar</h3>${table([{ h: 'Casa', f: a => 'Casa ' + a.casa }, { h: 'Fecha', f: a => fdate(a.fecha) }, { h: 'Método', f: a => esc(a.metodo) }, { h: 'Monto', num: 1, f: a => money(a.monto) }, { h: 'Nota', f: a => esc(a.nota || '') }, { h: 'Comprobante', f: a => fileBtn(a.comprobante) }, { h: '', f: a => `<span class="nowrap"><button class="btn sm primary" onclick="A.confirmarPago('${a.id}')">Confirmar</button> <button class="btn sm" onclick="A.rechazarPago('${a.id}')">Rechazar</button></span>` }], pend)}</div>` : ''}
+  ${table([
+    { h: 'Casa', f: n => `<b>${esc(casaLabel(n))}</b>` },
+    { h: 'Cuota', num: 1, f: n => { const r = casaRec(n) || {}; return money(r.cuota != null && r.cuota !== '' ? r.cuota : cfg().cuota) + (r.cuota != null && r.cuota !== '' ? ' <span class="tag brand">propia</span>' : ''); } },
+    { h: 'Cargos', num: 1, f: n => money(sum(db.all('cargos').filter(c => c.casa == n))) },
+    { h: 'Pagado', num: 1, f: n => money(sum(db.all('abonos').filter(a => a.casa == n && a.estado === 'confirmado'))) },
+    { h: 'Saldo', num: 1, f: n => { const s = saldoCasa(n); return s > 0.009 ? `<span class="tag warn">Debe ${money(s)}</span>` : s < -0.009 ? `<span class="tag ok">A favor ${money(-s)}</span>` : '<span class="tag ok">Al corriente</span>'; } },
+    { h: '', f: n => `<button class="btn sm" onclick="A.verCasa(${n})">Estado de cuenta</button>` }
+  ], casas, ['Total', '', money(sum(db.all('cargos'))), money(sum(db.all('abonos').filter(a => a.estado === 'confirmado'))), money(casas.reduce((s, n) => s + saldoCasa(n), 0)), ''])}
+  <p class="small muted mt">Las compensaciones (cuando un condómino paga un gasto del condominio de su bolsa) aparecen como abono automático en su estado de cuenta al aprobar el gasto.</p>`;
+};
+V.gastos = () => {
+  const m = UI.f.gMes || ym(), cat = UI.f.gCat || '', cta = UI.f.gCta || '';
+  const pend = db.all('gastos').filter(g => g.estado === 'pendiente');
+  let rows = gastosValidos().filter(g => (m === 'todo' || ym(g.fecha) === m) && (!cat || g.categoria === cat) && (!cta || g.cuenta === cta));
+  return `<div class="sect"><h2>Gastos</h2><div class="row"><button class="btn primary" onclick="A.gasto()">Registrar gasto</button><button class="btn" onclick="A.nomina()">Pagar nómina</button></div></div>
+  ${pend.length ? `<div class="card"><h3>Pagados por condóminos · por aprobar</h3><p class="small muted">Al aprobar, el monto se abona a la cuota de la casa que lo pagó.</p>${gastosTable(pend, true)}</div>` : ''}
+  <div class="row">${mesFiltro('gMes')}
+    <label class="fld" style="max-width:240px"><span>Categoría</span><select onchange="UI.f.gCat=this.value;render()"><option value="">Todas</option>${CATS.map(c => `<option ${c === cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+    <label class="fld" style="max-width:220px"><span>Pagado de</span><select onchange="UI.f.gCta=this.value;render()"><option value="">Todas</option>${[...Object.entries(CUENTAS), ['condomino', 'Un condómino']].map(([k, l]) => `<option value="${k}" ${k === cta ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+  <div class="mt">${gastosTable(sortBy(rows, 'fecha'), true)}</div>`;
+};
+V.cajas = () => {
+  const cur = UI.sub.cajas || 'chica';
+  const mv = movimientos(cur).slice().reverse();
+  return `<div class="sect"><h2>Cajas</h2><div class="row"><button class="btn primary" onclick="A.transferencia()">Mover dinero entre cajas</button><button class="btn" onclick="A.transferencia('chica','vigilante')">Entregar dinero a caseta</button><button class="btn" onclick="A.ingreso()">Otro ingreso / saldo inicial</button></div></div>
+  <div class="kpis">${Object.keys(CUENTAS).map(k => `<div class="card kpi" style="cursor:pointer;${k === cur ? 'outline:2px solid var(--brand-2)' : ''}" onclick="setSub('cajas','${k}')"><div class="lbl">${CUENTAS[k]}</div><div class="val">${money(saldoCuenta(k))}</div><div class="small muted">Ver movimientos</div></div>`).join('')}</div>
+  <h3>Movimientos · ${CUENTAS[cur]}</h3>
+  ${cur === 'vigilante' ? '<p class="small muted">El fondo de caseta es el dinero que tienen los vigilantes para pagar la basura, el jardinero y gastos menores. Cada pago que registran aparece aquí con su comprobante.</p>' : ''}
+  ${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) + (x.g && x.g.registradoPor ? `<div class="small muted">Registró: ${esc(x.g.registradoPor)}</div>` : '') }, { h: 'Entrada', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salida', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}
+  <h3 class="mt">Transferencias e ingresos registrados</h3>
+  ${table([{ h: 'Fecha', f: t => fdate(t.fecha) }, { h: 'Movimiento', f: t => t.de ? esc(CUENTAS[t.de] + ' → ' + CUENTAS[t.a]) : 'Ingreso a ' + esc(CUENTAS[t.cuenta]) }, { h: 'Concepto', f: t => esc(t.nota || t.concepto || '') }, { h: 'Monto', num: 1, f: t => money(t.monto) }, { h: '', f: t => `<button class="btn sm" onclick="A.borrar('${t.de ? 'transferencias' : 'ingresos'}','${t.id}')">Borrar</button>` }],
+    sortBy([...db.all('transferencias'), ...db.all('ingresos')], 'fecha').slice(0, 40))}`;
+};
+V.vigilancia = () => {
+  const sub = UI.sub.vigilancia || 'equipo';
+  let html = '';
+  if (sub === 'equipo') {
+    const vs = db.all('vigilantes');
+    html = `<div class="row sp mt"><p class="small muted" style="margin:0">Vacaciones, prima vacacional (25%) y aguinaldo (15 días) calculados con los mínimos de la Ley Federal del Trabajo.</p><button class="btn primary" onclick="A.vigilante()">Agregar vigilante</button></div>
+    <div class="grid2 mt">${vs.map(v => { const i = vacInfo(v); return `<div class="card"><div class="row sp"><h3 style="margin:0">${esc(v.nombre)}</h3>${v.activo === false ? '<span class="tag">Inactivo</span>' : v.rol === 'reemplazo' ? '<span class="tag brand">Reemplazo</span>' : '<span class="tag ok">Titular</span>'}</div>
+      <div class="small muted">${esc(v.telefono || '')} ${v.horario ? '· ' + esc(v.horario) : ''}</div>
+      <div class="mt">Sueldo: <b>${money(v.sueldo)}</b> ${esc(v.periodo || '')} · diario ${money(i.sd)}</div>
+      ${v.rol === 'reemplazo' ? `<div class="small">Pago por cobertura: <b>${money(v.pagoDia)}</b> por día</div>` : i.sinFecha ? '<div class="small muted">Captura la fecha de ingreso para calcular vacaciones.</div>' : `
+      <div class="small">Antigüedad: <b>${i.anios} año(s)</b> (ingresó ${fdate(v.ingreso)})</div>
+      <div class="small">${i.anios < 1 ? 'Al cumplir su primer año (' + fdate(i.proxAniv) + ') tendrá derecho a 12 días de vacaciones.' : `Vacaciones del periodo: <b>${i.derecho}</b> días · tomados ${i.tomados} · <b>pendientes ${i.pend}</b> (vencen ${fdate(i.proxAniv)})`}</div>
+      ${i.anios >= 1 ? `<div class="small">Prima vacacional: ${money(i.prima)}</div>` : ''}
+      <div class="small">Aguinaldo ${new Date().getFullYear()} estimado: ${money(i.aguinaldo)}</div>`}
+      <div class="row mt"><button class="btn sm primary" onclick="A.nomina('${v.id}')">Registrar pago</button><button class="btn sm" onclick="A.ausencia(null,'${v.id}')">Vacaciones / ausencia</button><button class="btn sm" onclick="A.vigilante('${v.id}')">Editar</button></div></div>`; }).join('') || '<div class="card">Agrega a los vigilantes titulares y a quienes los cubren.</div>'}</div>`;
+  }
+  if (sub === 'ausencias') {
+    const rows = sortBy(db.all('ausencias'), 'desde');
+    html = `<div class="row sp mt"><p class="small muted" style="margin:0">Registra vacaciones, descansos, permisos o faltas y quién cubre. Desde aquí se paga la cobertura.</p><button class="btn primary" onclick="A.ausencia()">Registrar ausencia</button></div>
+    <div class="mt">${calendarioAus()}</div>
+    <div class="mt">${table([{ h: 'Vigilante', f: a => `<b>${esc(vigName(a.vigilanteId))}</b>` }, { h: 'Tipo', f: a => esc(TIPOS_AUS[a.tipo] || a.tipo) }, { h: 'Fechas', f: a => fdate(a.desde) + ' – ' + fdate(a.hasta) + ` <span class="small muted">(${daysIncl(a.desde, a.hasta)} días)</span>` },
+      { h: 'Cubre', f: a => esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || '—') }, { h: 'Costo cobertura', num: 1, f: a => a.pagoCobertura ? money(a.pagoCobertura) : '' },
+      { h: 'Pago', f: a => !a.pagoCobertura ? '' : a.gastoId ? '<span class="tag ok">Pagado</span>' : `<button class="btn sm primary" onclick="A.pagarCobertura('${a.id}')">Pagar</button>` },
+      { h: '', f: a => `<button class="btn sm" onclick="A.ausencia('${a.id}')">Editar</button> <button class="btn sm" onclick="A.borrar('ausencias','${a.id}')">Borrar</button>` }], rows, null, 'Sin ausencias registradas')}</div>`;
+  }
+  if (sub === 'nomina') {
+    const y = UI.f.nAnio || String(new Date().getFullYear());
+    const rows = sortBy(gastosValidos().filter(g => (g.categoria === CATS[0] || g.categoria === CATS[1]) && g.fecha.startsWith(y)), 'fecha');
+    html = `<div class="row sp mt"><label class="fld" style="max-width:140px"><span>Año</span><input type="number" value="${y}" onchange="UI.f.nAnio=this.value;render()"></label><button class="btn primary" onclick="A.nomina()">Registrar pago</button></div>
+    <div class="mt">${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Vigilante', f: g => esc(vigName(g.vigilanteId)) }, { h: 'Concepto', f: g => esc(g.concepto) }, { h: 'Pagado de', f: g => esc(CUENTAS[g.cuenta] || '') }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: '', f: g => fileBtn(g.comprobante) + ` <button class="btn sm" onclick="A.borrarGasto('${g.id}')">Borrar</button>` }], rows, ['Total', '', '', '', money(sum(rows)), ''])}</div>`;
+  }
+  if (sub === 'turnos') {
+    const rows = sortBy(db.all('turnos'), 'inicio').slice(0, 80);
+    html = `<div class="mt">${table([{ h: 'Vigilante', f: t => `<b>${esc(vigName(t.vigilanteId))}</b>` }, { h: 'Inicio', f: t => fdt(t.inicio) }, { h: 'Fin', f: t => t.fin ? fdt(t.fin) : '<span class="tag ok">En turno</span>' }, { h: 'Notas de entrega', f: t => esc(t.notasEntrega || '') }], rows, null, 'Aún no hay turnos')}</div>`;
+  }
+  return `<div class="sect"><h2>Vigilancia</h2>${seg('vigilancia', [['equipo', 'Vigilantes'], ['ausencias', 'Vacaciones y coberturas'], ['nomina', 'Nómina'], ['turnos', 'Turnos']], 'equipo')}</div>${html}`;
+};
+function calendarioAus() {
+  const m = UI.f.calMes || ym();
+  const [y, mm] = m.split('-').map(Number);
+  const first = new Date(y, mm - 1, 1), dim = new Date(y, mm, 0).getDate();
+  const off = (first.getDay() + 6) % 7;
+  let cells = '';
+  for (let i = 0; i < off; i++) cells += '<div></div>';
+  for (let d = 1; d <= dim; d++) {
+    const f = `${y}-${pad(mm)}-${pad(d)}`; const a = ausenciasEn(f);
+    cells += `<div style="border:1px solid var(--line);border-radius:8px;min-height:64px;padding:4px;background:${f === today() ? 'var(--brand-soft)' : '#fff'}"><div class="small muted">${d}</div>${a.map(x => `<div style="font-size:.72rem;line-height:1.2;background:${x.tipo === 'vacaciones' ? '#e3eee8' : '#fbf0dc'};border-radius:4px;padding:1px 3px;margin-top:2px">${esc(vigName(x.vigilanteId).split(' ')[0])} → ${esc((x.cubreId ? vigName(x.cubreId) : x.cubreNombre || '?').split(' ')[0])}</div>`).join('')}</div>`;
+  }
+  return `<div class="card"><div class="row sp"><h3 style="margin:0">Calendario · ${mesLabel(m)}</h3><input type="month" value="${m}" onchange="UI.f.calMes=this.value;render()"></div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.6rem">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<div class="small muted" style="text-align:center">${d}</div>`).join('')}${cells}</div>
+    <div class="small muted mt">Formato: quien falta → quien cubre</div></div>`;
+}
+V.bitacora = () => {
+  const sub = UI.sub.bitacora || 'visitas';
+  const d = UI.f.bDia || today();
+  if (sub === 'visitas') {
+    const casa = UI.f.bCasa || '';
+    const rows = sortBy(db.all('visitas').filter(v => (UI.f.bTodo ? true : String(v.entrada).slice(0, 10) === d) && (!casa || v.casa == casa)), 'entrada');
+    return `<div class="sect"><h2>Visitas y paquetes</h2>${seg('bitacora', [['visitas', 'Bitácora de visitas'], ['paquetes', 'Paquetes']], 'visitas')}</div>
+    <div class="row"><label class="fld" style="max-width:190px"><span>Día</span><input type="date" value="${d}" onchange="UI.f.bDia=this.value;UI.f.bTodo=false;render()"></label>
+    <label class="fld" style="max-width:220px"><span>Casa</span><select onchange="UI.f.bCasa=this.value;render()">${casaOpts('Todas').map(([v, l]) => `<option value="${v}" ${v == casa ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+    <label class="chk" style="grid-column:auto"><input type="checkbox" ${UI.f.bTodo ? 'checked' : ''} onchange="UI.f.bTodo=this.checked;render()"> Ver todas las fechas</label></div>
+    <div class="mt">${visitasTable(rows.slice(0, 200))}</div>`;
+  }
+  const rows = sortBy(db.all('paquetes'), 'recibido').slice(0, 100);
+  return `<div class="sect"><h2>Visitas y paquetes</h2>${seg('bitacora', [['visitas', 'Bitácora de visitas'], ['paquetes', 'Paquetes']], 'visitas')}</div>${paquetesTable(rows, false)}`;
+};
+function paquetesTable(rows, acciones) {
+  return table([{ h: 'Casa', f: p => 'Casa ' + p.casa }, { h: 'Paquete', f: p => `<b>${esc(p.empresa || '')}</b> ${esc(p.descripcion || '')}` }, { h: 'Recibido', f: p => fdt(p.recibido) + `<div class="small muted">${esc(vigName(p.vigilanteId))}</div>` },
+    { h: 'Entregado', f: p => p.entregado ? fdt(p.entregado) + `<div class="small muted">a ${esc(p.entregadoA || '')}</div>` : (acciones ? `<button class="btn sm primary" onclick="A.entregarPaquete('${p.id}')">Entregar</button>` : '<span class="tag warn">En caseta</span>') }, { h: 'Foto', f: p => fileBtn(p.foto) }], rows, null, 'Sin paquetes');
+}
+V.servicios = () => {
+  const ss = db.all('servicios');
+  return `<div class="sect"><h2>Servicios y pagos recurrentes</h2><button class="btn primary" onclick="A.servicio()">Agregar servicio</button></div>
+  <p class="small muted">CFE, agua, basura, jardinero, vigilancia… La app avisa cuándo vence cada uno. Los que paga caseta aparecen también en la tableta.</p>
+  ${table([{ h: 'Servicio', f: s => `<b>${esc(s.nombre)}</b><div class="small muted">${esc(s.proveedor || '')}</div>` }, { h: 'Frecuencia', f: s => esc(s.frecuencia) + (s.frecuencia !== 'semanal' ? ' · día ' + esc(s.dia) : '') }, { h: 'Monto aprox.', num: 1, f: s => money(s.monto) },
+    { h: 'Paga', f: s => s.responsable === 'caseta' ? 'Caseta (fondo)' : esc(CUENTAS[s.cuenta] || 'Administrador') }, { h: 'Último pago', f: s => { const e = estadoServicio(s); return e.ult ? fdate(e.ult.fecha) + ' · ' + money(e.ult.monto) : '—'; } },
+    { h: 'Estado', f: s => { const e = estadoServicio(s); return `<span class="tag ${e.cls}">${e.txt}</span>`; } },
+    { h: '', f: s => `<span class="nowrap"><button class="btn sm primary" onclick="A.pagarServicio('${s.id}')">Pagar</button> <button class="btn sm" onclick="A.servicio('${s.id}')">Editar</button></span>` }], ss, null, 'Agrega los pagos recurrentes del condominio')}`;
+};
+V.reportes = () => {
+  const sub = UI.sub.reportes || 'mensual';
+  const s = `<div class="sect noprint"><h2>Reportes</h2><div class="row">${seg('reportes', [['mensual', 'Reporte mensual'], ['anual', 'Acta de entrega anual'], ['presupuesto', 'Presupuesto']], 'mensual')}<button class="btn primary" onclick="window.print()">Imprimir / Guardar PDF</button></div></div>`;
+  if (sub === 'mensual') return s + reporteMensual();
+  if (sub === 'anual') return s + actaEntrega();
+  const c = cfg(), y = c.anio;
+  const g = gastosValidos().filter(x => String(x.fecha).startsWith(String(y)));
+  const rows = CATS.map(cat => ({ cat, p: num((c.presupuesto || {})[cat]), r: sum(g.filter(x => x.categoria === cat)) }));
+  return s + `<div class="row sp"><h3>Presupuesto ${y} contra lo gastado</h3><button class="btn noprint" onclick="A.presupuesto()">Editar presupuesto</button></div>` +
+    table([{ h: 'Categoría', f: r => esc(r.cat) }, { h: 'Presupuesto anual', num: 1, f: r => money(r.p) }, { h: 'Gastado', num: 1, f: r => money(r.r) }, { h: 'Avance', f: r => r.p ? `<div class="bar ${r.r > r.p ? 'over' : ''}"><i style="width:${Math.min(100, Math.round(r.r / r.p * 100))}%"></i></div><span class="small">${Math.round(r.r / r.p * 100)}%</span>` : '' }],
+      rows, ['Total', money(sum(rows, r => r.p)), money(sum(rows, r => r.r)), '']);
+};
+function reporteMensual() {
+  const m = UI.f.rMes || ym(), c = cfg();
+  const g = gastosValidos().filter(x => ym(x.fecha) === m);
+  const cobr = db.all('abonos').filter(a => a.estado === 'confirmado' && ym(a.fecha) === m);
+  const cargos = db.all('cargos').filter(x => ym(x.fecha) === m);
+  const ing = db.all('ingresos').filter(x => ym(x.fecha) === m);
+  const vis = db.all('visitas').filter(v => ym(v.entrada) === m).length;
+  return `<div class="noprint">${mesFiltro('rMes')}</div><div class="report mt"><h1>${esc(c.nombre)} · Reporte de ${mesLabel(m)}</h1><p class="muted">Administración ${c.anio}: ${esc(casaLabel(c.casaAdmin))} · Generado ${fdate(today())}</p>
+  <div class="kpis">${kpi('Cuotas cargadas', money(sum(cargos)))}${kpi('Cobrado', money(sum(cobr) + sum(ing)))}${kpi('Gastado', money(sum(g)))}${kpi('Visitas registradas', vis)}</div>
+  <h3>Saldos actuales</h3>${table([{ h: 'Caja', f: k => CUENTAS[k] }, { h: 'Saldo', num: 1, f: k => money(saldoCuenta(k)) }], Object.keys(CUENTAS), ['Total', money(Object.keys(CUENTAS).reduce((s, k) => s + saldoCuenta(k), 0))])}
+  <h3 class="mt">Gastos por categoría</h3>${table([{ h: 'Categoría', f: r => esc(r[0]) }, { h: 'Monto', num: 1, f: r => money(r[1]) }], CATS.map(ct => [ct, sum(g.filter(x => x.categoria === ct))]).filter(r => r[1]), ['Total', money(sum(g))])}
+  <h3 class="mt">Pagos recibidos</h3>${table([{ h: 'Fecha', f: a => fdate(a.fecha) }, { h: 'Casa', f: a => 'Casa ' + a.casa }, { h: 'Método', f: a => esc(a.metodo) }, { h: 'Monto', num: 1, f: a => money(a.monto) }], sortBy(cobr, 'fecha', false), ['', '', 'Total', money(sum(cobr))], 'Sin pagos este mes')}
+  <h3 class="mt">Saldo por casa</h3>${table([{ h: 'Casa', f: n => esc(casaLabel(n)) }, { h: 'Saldo', num: 1, f: n => { const s = saldoCasa(n); return s > 0.009 ? 'Debe ' + money(s) : s < -0.009 ? 'A favor ' + money(-s) : 'Al corriente'; } }], Array.from({ length: NUM_CASAS }, (_, i) => i + 1))}
+  <h3 class="mt">Detalle de gastos</h3>${gastosTable(sortBy(g, 'fecha', false), false)}</div>`;
+}
+function actaEntrega() {
+  const c = cfg(), y = String(UI.f.aAnio || c.anio);
+  const g = gastosValidos().filter(x => String(x.fecha).startsWith(y));
+  const cobr = db.all('abonos').filter(a => a.estado === 'confirmado' && String(a.fecha).startsWith(y));
+  const sig = (num(c.casaAdmin) % NUM_CASAS) + 1;
+  const vs = db.all('vigilantes').filter(v => v.activo !== false);
+  return `<div class="noprint row"><label class="fld" style="max-width:140px"><span>Año</span><input type="number" value="${y}" onchange="UI.f.aAnio=this.value;render()"></label>${isAdmin() ? `<button class="btn danger" style="align-self:flex-end" onclick="A.cerrarAnio()">Cerrar ${c.anio} y entregar a la siguiente casa</button>` : ''}</div>
+  <div class="report mt"><h1>Acta de entrega de administración ${y}</h1><p>${esc(c.nombre)} · Entrega: <b>${esc(casaLabel(c.casaAdmin))}</b> · Recibe: <b>${esc(casaLabel(sig))}</b> · Fecha: ${fdate(today())}</p>
+  <h3>1. Saldos que se entregan</h3>${table([{ h: 'Caja', f: k => CUENTAS[k] }, { h: 'Saldo', num: 1, f: k => money(saldoCuenta(k)) }], Object.keys(CUENTAS), ['Total', money(Object.keys(CUENTAS).reduce((s, k) => s + saldoCuenta(k), 0))])}
+  <h3 class="mt">2. Resumen del año</h3>${table([{ h: 'Concepto', f: r => r[0] }, { h: 'Monto', num: 1, f: r => money(r[1]) }], [['Cuotas y cargos emitidos', sum(db.all('cargos').filter(x => String(x.fecha).startsWith(y)))], ['Pagos recibidos de casas', sum(cobr)], ['Otros ingresos', sum(db.all('ingresos').filter(x => String(x.fecha).startsWith(y)))], ['Gastos totales', sum(g)]])}
+  <h3 class="mt">3. Gastos por categoría contra presupuesto</h3>${table([{ h: 'Categoría', f: r => esc(r.cat) }, { h: 'Presupuesto', num: 1, f: r => r.p ? money(r.p) : '—' }, { h: 'Gastado', num: 1, f: r => money(r.r) }], CATS.map(cat => ({ cat, p: num((c.presupuesto || {})[cat]), r: sum(g.filter(x => x.categoria === cat)) })).filter(r => r.p || r.r), ['Total', '', money(sum(g))])}
+  <h3 class="mt">4. Adeudos y saldos a favor por casa</h3>${table([{ h: 'Casa', f: n => esc(casaLabel(n)) }, { h: 'Saldo', num: 1, f: n => { const s = saldoCasa(n); return s > 0.009 ? 'Debe ' + money(s) : s < -0.009 ? 'A favor ' + money(-s) : 'Al corriente'; } }], Array.from({ length: NUM_CASAS }, (_, i) => i + 1))}
+  <h3 class="mt">5. Personal de vigilancia</h3>${table([{ h: 'Nombre', f: v => esc(v.nombre) }, { h: 'Tipo', f: v => v.rol === 'reemplazo' ? 'Reemplazo' : 'Titular' }, { h: 'Sueldo', num: 1, f: v => money(v.sueldo) + ' ' + esc(v.periodo || '') }, { h: 'Ingreso', f: v => fdate(v.ingreso) }, { h: 'Vacaciones pendientes', f: v => { const i = vacInfo(v); return v.rol === 'reemplazo' || i.sinFecha ? '—' : i.pend + ' días'; } }], vs)}
+  <h3 class="mt">6. Servicios recurrentes</h3>${table([{ h: 'Servicio', f: s => esc(s.nombre) }, { h: 'Proveedor', f: s => esc(s.proveedor || '') }, { h: 'Monto aprox.', num: 1, f: s => money(s.monto) }, { h: 'Estado', f: s => estadoServicio(s).txt }], db.all('servicios'))}
+  <h3 class="mt">7. Pendientes</h3>${table([{ h: 'Problema', f: i => esc(i.titulo) }, { h: 'Reportó', f: i => esc(casaLabel(i.casa)) }, { h: 'Estado', f: i => esc(i.estado) }], db.all('incidencias').filter(i => i.estado !== 'resuelta'), null, 'Sin pendientes')}
+  <p class="mt">Documentos en el archivo digital: ${db.all('documentos').length}</p>
+  <div class="sign"><div>Entrega<br>${esc(casaLabel(c.casaAdmin))}</div><div>Recibe<br>${esc(casaLabel(sig))}</div></div></div>`;
+}
+
+/* ============ Vistas: Sistema ============ */
+V.sistema = () => {
+  const c = cfg(), sc = syncCfg();
+  const link = sc.url ? location.href.split('?')[0].split('#')[0] + '?conectar=' + btoa(JSON.stringify({ url: sc.url, key: sc.key })) : '';
+  return `<div class="sect"><h2>Sistema</h2></div>
+  <div class="grid2">
+    <div class="card"><h3>Condominio</h3><p>${esc(c.nombre)} · Cuota general ${money(c.cuota)}<br>Año ${c.anio} · Administra ${esc(casaLabel(c.casaAdmin))}</p><button class="btn primary" onclick="A.config()">Editar configuración</button></div>
+    <div class="card"><h3>Sincronización en la nube</h3><p class="small">${esc(syncState.msg)}${syncState.last ? ' · ' + syncState.last.toLocaleTimeString('es-MX') : ''}</p>
+      <div class="row"><button class="btn primary" onclick="A.syncConfig()">${sc.url ? 'Cambiar conexión' : 'Conectar a Supabase'}</button>${sc.url ? '<button class="btn" onclick="sync().then(render)">Sincronizar ahora</button><button class="btn" onclick="A.desconectar()">Desconectar</button>' : ''}</div>
+      ${link ? `<p class="small mt">Enlace de instalación para los demás dispositivos (mándalo por WhatsApp a cada casa y ábrelo en la tableta):</p><input style="width:100%" readonly value="${esc(link)}" onclick="this.select()"><button class="btn sm mt" onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Enlace copiado'))">Copiar enlace</button>` : ''}</div>
+  </div>
+  <h3 class="mt">Casas, propietarios y PIN</h3>
+  ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Propietario', f: r => esc(r.propietario || '') }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => `<code>${esc(r.pin)}</code>` }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
+  <div class="grid2 mt">
+    <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
+    <div class="card"><h3>Pruebas</h3><p class="small muted">Carga datos de ejemplo para conocer la app. Bórralos antes de empezar a usarla en serio.</p><div class="row"><button class="btn" onclick="A.demo()">Cargar datos de ejemplo</button><button class="btn danger" onclick="A.borrarTodo()">Borrar datos de este dispositivo</button></div></div>
+  </div>
+  <p class="small muted mt">Versión ${APP_VER}</p>`;
+};
+
+/* ============ Vistas: Caseta (tableta) ============ */
+V.c_visitas = () => {
+  const hoy = today();
+  const dentro = sortBy(db.all('visitas').filter(v => !v.salida && String(v.entrada).slice(0, 10) >= addDays(hoy, -1)), 'entrada');
+  const esper = sortBy(db.all('preregistros').filter(p => p.fecha === hoy && p.estado !== 'llegó'), 'casa', false);
+  const frec = sortBy(db.all('frecuentes'), 'casa', false);
+  const hoyV = sortBy(db.all('visitas').filter(v => String(v.entrada).slice(0, 10) === hoy), 'entrada');
+  return `<div class="row"><button class="btn primary lg" onclick="A.entrada()">+ Registrar entrada</button><button class="btn lg" onclick="A.paquete()">+ Recibir paquete</button><button class="btn lg" onclick="A.incidencia('caseta')">Reportar problema</button></div>
+  <div class="grid2 mt">
+    <div class="card"><h3>Esperados hoy</h3>${esper.length ? `<div class="list">${esper.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} ${esc(p.nota || '')}</div></div><button class="btn primary" onclick="A.entrada(null,'${p.id}')">Llegó</button></div>`).join('')}</div>` : '<p class="muted">Nadie avisó visitas para hoy.</p>'}</div>
+    <div class="card"><h3>Dentro del condominio</h3>${dentro.length ? `<div class="list">${dentro.map(v => `<div class="item"><div><div class="t">${esc(v.nombre)}</div><div class="small muted">Casa ${v.casa} · ${esc(v.tipo)} · entró ${ftime(v.entrada)} ${esc(v.placas || '')}</div></div><button class="btn primary" onclick="A.salida('${v.id}')">Salió</button></div>`).join('')}</div>` : '<p class="muted">No hay visitas dentro.</p>'}</div>
+  </div>
+  <div class="card mt"><h3>Autorizados permanentes</h3>${frec.length ? `<div class="list">${frec.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} · ${esc(p.motivo || '')} ${esc(p.dias || '')}</div></div><button class="btn" onclick="A.entrada('${p.id}')">Entró</button></div>`).join('')}</div>` : '<p class="muted">Ninguno.</p>'}</div>
+  <h3 class="mt">Entradas de hoy</h3>${visitasTable(hoyV, true, true)}`;
+};
+V.c_paquetes = () => `<div class="row"><button class="btn primary lg" onclick="A.paquete()">+ Recibir paquete</button></div>
+  <h3 class="mt">En caseta</h3>${paquetesTable(sortBy(db.all('paquetes').filter(p => !p.entregado), 'recibido'), true)}
+  <h3 class="mt">Entregados recientemente</h3>${paquetesTable(sortBy(db.all('paquetes').filter(p => p.entregado), 'entregado').slice(0, 20), false)}`;
+V.c_caja = () => {
+  const mv = movimientos('vigilante').slice().reverse().slice(0, 60);
+  const serv = db.all('servicios').filter(s => s.responsable === 'caseta');
+  return `<div class="kpis">${kpi('Dinero en caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}</div>
+  <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Basura')">Pagar basura</button><button class="btn primary lg" onclick="A.pagoCaseta('Jardinería')">Pagar jardinero</button><button class="btn lg" onclick="A.pagoCaseta('Otros')">Otro pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
+  ${serv.length ? `<div class="card mt"><h3>Pagos a cargo de caseta</h3>${serv.map(s => { const e = estadoServicio(s); return `<div class="row sp" style="margin:.35rem 0"><span><b>${esc(s.nombre)}</b> ${money(s.monto)} ${esc(s.frecuencia)}</span><span class="row"><span class="tag ${e.cls}">${e.txt}</span><button class="btn sm primary" onclick="A.pagoCaseta('${esc(s.categoria)}','${s.id}')">Pagar</button></span></div>`; }).join('')}</div>` : ''}
+  <h3 class="mt">Movimientos del fondo</h3>${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) }, { h: 'Entró', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salió', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}`;
+};
+V.c_casas = () => {
+  const casas = Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1) || { num: i + 1 });
+  return `<div class="grid2">${casas.map(c => `<div class="card"><div class="row sp"><h3 style="margin:0">Casa ${c.num}</h3>${c.mayor ? '<span class="tag warn">Atención especial</span>' : ''}</div>
+    <div>${esc(c.propietario || '')} ${c.telefono ? `· <a href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a>` : ''}</div>
+    ${c.emergencia ? `<div class="small mt"><b>Contactos de emergencia:</b><div style="white-space:pre-wrap">${esc(c.emergencia)}</div></div>` : ''}
+    ${c.notas ? `<div class="small mt"><b>Indicaciones para caseta:</b><div style="white-space:pre-wrap">${esc(c.notas)}</div></div>` : ''}</div>`).join('')}</div>
+  <div class="mt">${directorioHtml(false)}</div>`;
+};
+V.c_turno = () => {
+  const t = db.get('turnos', SES.turnoId); const v = db.get('vigilantes', SES.vigilanteId) || {};
+  const prox = sortBy(db.all('ausencias').filter(a => a.hasta >= today() && (a.cubreId === v.id || a.vigilanteId === v.id)), 'desde', false);
+  const anterior = sortBy(db.all('turnos').filter(x => x.fin && x.id !== SES.turnoId), 'fin')[0];
+  return `<div class="grid2"><div class="card"><h3>Turno de ${esc(v.nombre || '')}</h3><p>Inicio: ${fdt(t && t.inicio)}</p><button class="btn primary lg" onclick="A.entregarTurno()">Entregar turno</button></div>
+    <div class="card"><h3>Notas del turno anterior</h3>${anterior ? `<p class="small muted">${esc(vigName(anterior.vigilanteId))} · ${fdt(anterior.fin)}</p><p style="white-space:pre-wrap">${esc(anterior.notasEntrega || 'Sin notas')}</p>` : '<p class="muted">—</p>'}</div>
+    <div class="card"><h3>Mis próximas ausencias y coberturas</h3>${prox.length ? prox.map(a => `<div class="small">${fdate(a.desde)} – ${fdate(a.hasta)}: ${a.vigilanteId === v.id ? 'Tú: ' + TIPOS_AUS[a.tipo] : 'Cubres a ' + esc(vigName(a.vigilanteId))}</div>`).join('') : '<p class="muted">Ninguna</p>'}</div>
+    <div class="card"><h3>Avisos</h3>${sortBy(db.all('avisos'), 'fecha').slice(0, 3).map(avisoHtml).join('') || '<p class="muted">Sin avisos</p>'}</div></div>`;
+};
+
+/* ============ Acciones ============ */
+const A = {};
+const metodoCuenta = m => m === 'Efectivo' ? 'chica' : 'banco';
+
+A.borrar = (col, id) => confirmar('¿Borrar este registro?', () => db.del(col, id), 'Borrar');
+
+/* ---- Pagos de casas ---- */
+A.pagoCasa = n => openForm('Registrar pago · Casa ' + n, [
+  { name: 'monto', label: 'Monto pagado', type: 'number', required: true, value: Math.max(0, saldoCasa(n)) || '' },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today(), required: true },
+  { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Transferencia', 'Depósito', 'Efectivo'] },
+  { name: 'nota', label: 'Nota (opcional)', placeholder: 'Ej. cuota de noviembre' },
+  { name: 'comprobante', label: 'Foto del comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
+], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('abonos', { ...v, casa: n, estado: isAdmin() ? 'confirmado' : 'pendiente', cuenta: metodoCuenta(v.metodo), registradoPor: quien() }); },
+  { intro: isAdmin() ? '' : '<p class="small muted">El administrador lo confirmará al verlo reflejado.</p>', toast: isAdmin() ? 'Pago registrado' : 'Pago enviado para confirmación' });
+A.pagoAdmin = () => openForm('Registrar pago de una casa', [
+  { name: 'casa', label: 'Casa', type: 'select', options: casaOpts() },
+  { name: 'monto', label: 'Monto', type: 'number', required: true },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Transferencia', 'Depósito', 'Efectivo'] },
+  { name: 'cuenta', label: 'Entró a', type: 'select', options: cuentaOpts(['banco', 'chica']) },
+  { name: 'nota', label: 'Nota' },
+  { name: 'comprobante', label: 'Comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
+], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('abonos', { ...v, casa: +v.casa, estado: 'confirmado', registradoPor: quien() }); });
+A.confirmarPago = id => { const a = db.get('abonos', id); openForm('Confirmar pago de Casa ' + a.casa + ' · ' + money(a.monto), [{ name: 'cuenta', label: '¿A dónde entró el dinero?', type: 'select', options: cuentaOpts(['banco', 'chica']), value: a.cuenta || metodoCuenta(a.metodo) }], v => { db.put('abonos', { ...a, cuenta: v.cuenta, estado: 'confirmado', confirmadoPor: quien() }); }, { ok: 'Confirmar', toast: 'Pago confirmado' }); };
+A.rechazarPago = id => { const a = db.get('abonos', id); openForm('Rechazar pago', [{ name: 'motivo', label: 'Motivo', required: true }], v => { db.put('abonos', { ...a, estado: 'rechazado', nota: (a.nota || '') + ' · Rechazado: ' + v.motivo }); }, { ok: 'Rechazar' }); };
+
+/* ---- Cuotas y cargos ---- */
+const cuotaDe = n => { const r = casaRec(n) || {}; return r.cuota != null && r.cuota !== '' ? num(r.cuota) : num(cfg().cuota); };
+A.generarCuotas = () => {
+  const m = ym();
+  openForm('Generar cuotas del mes', [
+    { name: 'mes', label: 'Mes', type: 'month', value: m, required: true },
+    { type: 'html', html: '<p class="small muted" style="grid-column:1/-1;margin:0">Monto de cada casa (se toma la cuota general o la propia de la casa). Pon 0 para no cobrarle.</p>' },
+    ...Array.from({ length: NUM_CASAS }, (_, i) => ({ name: 'c' + (i + 1), label: casaLabel(i + 1), type: 'number', value: cuotaDe(i + 1) }))
+  ], v => {
+    let creadas = 0, omit = 0;
+    for (let n = 1; n <= NUM_CASAS; n++) {
+      const monto = num(v['c' + n]); if (!monto) continue;
+      const clave = 'cuota-' + v.mes;
+      if (db.all('cargos').some(c => c.casa == n && c.clave === clave)) { omit++; continue; }
+      db.put('cargos', { casa: n, fecha: v.mes + '-01', concepto: 'Cuota de mantenimiento ' + mesLabel(v.mes), monto, tipo: 'ordinaria', clave }); creadas++;
+    }
+    setTimeout(() => toast(`${creadas} cuota(s) generadas${omit ? ', ' + omit + ' ya existían' : ''}`), 50);
+  }, { ok: 'Generar', toast: false });
+};
+A.cuotaEspecial = () => openForm('Cuota especial', [
+  { name: 'concepto', label: 'Concepto', required: true, placeholder: 'Ej. Pintura de barda', full: true },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'total', label: 'Total a repartir en partes iguales', type: 'number', help: 'O deja vacío y captura abajo el monto de cada casa' },
+  ...Array.from({ length: NUM_CASAS }, (_, i) => ({ name: 'c' + (i + 1), label: casaLabel(i + 1), type: 'number' }))
+], v => {
+  const montos = Array.from({ length: NUM_CASAS }, (_, i) => num(v['c' + (i + 1)]));
+  const usar = montos.some(x => x) ? montos : (v.total ? montos.map(() => Math.round(v.total / NUM_CASAS * 100) / 100) : null);
+  if (!usar) return 'Captura el total o el monto por casa';
+  usar.forEach((m, i) => { if (m) db.put('cargos', { casa: i + 1, fecha: v.fecha, concepto: v.concepto, monto: m, tipo: 'especial' }); });
+}, { toast: 'Cuota especial creada' });
+A.cargo = (n) => openForm('Cargo a una casa', [
+  { name: 'casa', label: 'Casa', type: 'select', options: casaOpts(), value: n || '' },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'concepto', label: 'Concepto', required: true, full: true },
+  { name: 'monto', label: 'Monto', type: 'number', required: true, help: 'Usa un monto negativo para un descuento o bonificación' },
+  { name: 'tipo', label: 'Tipo', type: 'select', options: [['ordinaria', 'Ordinario'], ['especial', 'Especial']] }
+], v => { db.put('cargos', { ...v, casa: +v.casa }); });
+A.verCasa = n => {
+  modal(`<div class="row sp"><h3>Estado de cuenta · ${esc(casaLabel(n))}</h3><button class="btn" onclick="closeModal()">Cerrar</button></div>
+    <p>Saldo: <b>${money(saldoCasa(n))}</b> ${saldoCasa(n) < 0 ? '(a favor)' : ''}</p>
+    <div class="row"><button class="btn sm" onclick="closeModal();A.cargo(${n})">Agregar cargo</button></div><div class="mt">${estadoCuentaTable(n, true)}</div>`, true);
+};
+
+/* ---- Gastos ---- */
+A.gasto = (id, pre = {}) => {
+  const g = id ? db.get('gastos', id) : { fecha: today(), cuenta: 'banco', ...pre };
+  openForm(id ? 'Editar gasto' : 'Registrar gasto', [
+    { name: 'fecha', label: 'Fecha', type: 'date', value: g.fecha, required: true },
+    { name: 'categoria', label: 'Categoría', type: 'select', options: CATS, value: g.categoria },
+    { name: 'concepto', label: 'Concepto', value: g.concepto, required: true, full: true },
+    { name: 'monto', label: 'Monto', type: 'number', value: g.monto, required: true },
+    { name: 'cuenta', label: 'Se pagó de', type: 'select', options: [...cuentaOpts(), ['condomino', 'Lo pagó un condómino (abona a su cuota)']], value: g.cuenta },
+    { name: 'casaPaga', label: 'Condómino que lo pagó', type: 'select', options: casaOpts('— No aplica —'), value: g.casaPaga || '' },
+    { name: 'proveedor', label: 'Proveedor / quién recibió', value: g.proveedor },
+    { name: 'comprobante', label: 'Ticket, factura o foto', type: 'file', accept: 'image/*,application/pdf', keep: g.comprobante, help: g.comprobante ? 'Ya tiene comprobante; sube otro solo si quieres reemplazarlo' : '' }
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    if (v.cuenta === 'condomino' && !v.casaPaga) return 'Indica qué casa lo pagó';
+    if (v.cuenta !== 'condomino') v.casaPaga = '';
+    const rec = db.put('gastos', { ...g, ...v, casaPaga: v.casaPaga ? +v.casaPaga : '', estado: 'aprobado', registradoPor: g.registradoPor || quien() });
+    syncCompensacion(rec);
+  });
+};
+function syncCompensacion(g) {
+  const ab = g.abonoId && db.get('abonos', g.abonoId);
+  if (g.cuenta === 'condomino' && g.estado === 'aprobado') {
+    const a = db.put('abonos', { ...(ab || {}), casa: g.casaPaga, fecha: g.fecha, monto: g.monto, metodo: 'compensacion', estado: 'confirmado', cuenta: null, nota: g.concepto, gastoId: g.id, comprobante: null });
+    if (!ab) db.put('gastos', { ...db.get('gastos', g.id), abonoId: a.id });
+  } else if (ab) { db.del('abonos', ab.id); db.put('gastos', { ...db.get('gastos', g.id), abonoId: null }); }
+}
+A.gastoCondomino = n => openForm('Pagué un gasto del condominio', [
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'categoria', label: 'Categoría', type: 'select', options: CATS, value: 'Mantenimiento' },
+  { name: 'concepto', label: '¿Qué pagaste?', required: true, full: true, placeholder: 'Ej. Reparación de bomba de agua' },
+  { name: 'monto', label: 'Monto', type: 'number', required: true },
+  { name: 'proveedor', label: 'A quién se pagó' },
+  { name: 'comprobante', label: 'Ticket o foto', type: 'file', accept: 'image/*,application/pdf', full: true }
+], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('gastos', { ...v, cuenta: 'condomino', casaPaga: n, estado: 'pendiente', registradoPor: 'Casa ' + n }); },
+  { intro: '<p class="small muted">Cuando el administrador lo apruebe, el monto se abona a tu cuota (completa o parcial). Si sobra, queda como saldo a favor.</p>', toast: 'Enviado al administrador' });
+A.aprobarGasto = id => { const g = db.put('gastos', { ...db.get('gastos', id), estado: 'aprobado', aprobadoPor: quien() }); syncCompensacion(g); render(); toast('Aprobado y abonado a Casa ' + g.casaPaga); };
+A.rechazarGasto = id => confirmar('¿Rechazar este gasto?', () => db.put('gastos', { ...db.get('gastos', id), estado: 'rechazado' }), 'Rechazar');
+A.borrarGasto = id => confirmar('¿Borrar este gasto?', () => {
+  const g = db.get('gastos', id);
+  if (g.abonoId) db.del('abonos', g.abonoId);
+  db.all('ausencias').filter(a => a.gastoId === id).forEach(a => db.put('ausencias', { ...a, gastoId: null }));
+  db.del('gastos', id);
+}, 'Borrar');
+
+/* ---- Cajas ---- */
+A.transferencia = (de = 'banco', a = 'chica', desdeCaseta) => openForm(desdeCaseta ? 'Devolver dinero del fondo' : 'Mover dinero entre cajas', [
+  { name: 'de', label: 'De', type: 'select', options: cuentaOpts(desdeCaseta ? ['vigilante'] : undefined), value: de },
+  { name: 'a', label: 'A', type: 'select', options: cuentaOpts(desdeCaseta ? ['chica', 'banco'] : undefined), value: a },
+  { name: 'monto', label: 'Monto', type: 'number', required: true },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'nota', label: 'Nota', full: true, placeholder: a === 'vigilante' ? 'Ej. Fondo para basura y jardinero de noviembre' : '' }
+], v => { if (v.de === v.a) return 'Elige cajas distintas'; if (!(v.monto > 0)) return 'Escribe el monto'; db.put('transferencias', { ...v, registradoPor: quien() }); });
+A.ingreso = () => openForm('Otro ingreso o saldo inicial', [
+  { name: 'cuenta', label: 'Caja', type: 'select', options: cuentaOpts() },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'concepto', label: 'Concepto', required: true, full: true, placeholder: 'Ej. Saldo inicial recibido de la administración anterior' },
+  { name: 'monto', label: 'Monto', type: 'number', required: true, help: 'Puede ser negativo para un ajuste' }
+], v => { db.put('ingresos', v); });
+
+/* ---- Vigilancia ---- */
+A.vigilante = id => {
+  const v = id ? db.get('vigilantes', id) : { periodo: 'semanal', rol: 'titular', activo: true };
+  openForm(id ? 'Editar vigilante' : 'Agregar vigilante', [
+    { name: 'nombre', label: 'Nombre completo', value: v.nombre, required: true, full: true },
+    { name: 'telefono', label: 'Teléfono', value: v.telefono, type: 'tel' },
+    { name: 'rol', label: 'Tipo', type: 'select', options: [['titular', 'Titular'], ['reemplazo', 'Reemplazo / cubre descansos']], value: v.rol },
+    { name: 'sueldo', label: 'Sueldo', type: 'number', value: v.sueldo },
+    { name: 'periodo', label: 'Se paga', type: 'select', options: ['semanal', 'quincenal', 'mensual'], value: v.periodo },
+    { name: 'pagoDia', label: 'Pago por día de cobertura', type: 'number', value: v.pagoDia, help: 'Para reemplazos' },
+    { name: 'ingreso', label: 'Fecha de ingreso', type: 'date', value: v.ingreso },
+    { name: 'horario', label: 'Horario', value: v.horario, placeholder: 'Ej. 24x24, L-S 7 a 19' },
+    { name: 'pin', label: 'PIN de 4 dígitos para la tableta', value: v.pin || String(Math.floor(1000 + Math.random() * 9000)), maxlength: 4, inputmode: 'numeric', required: true },
+    { name: 'activo', label: 'Activo', type: 'checkbox', value: v.activo !== false }
+  ], x => { if (!/^\d{4}$/.test(x.pin)) return 'El PIN debe tener 4 números'; db.put('vigilantes', { ...v, ...x }); });
+};
+A.ausencia = (id, vid) => {
+  const a = id ? db.get('ausencias', id) : { vigilanteId: vid || '', tipo: 'vacaciones', desde: today(), hasta: today() };
+  openForm(id ? 'Editar ausencia' : 'Vacaciones, descanso o ausencia', [
+    { name: 'vigilanteId', label: 'Vigilante que falta', type: 'select', options: vigOpts(), value: a.vigilanteId },
+    { name: 'tipo', label: 'Tipo', type: 'select', options: Object.entries(TIPOS_AUS), value: a.tipo },
+    { name: 'desde', label: 'Desde', type: 'date', value: a.desde, required: true },
+    { name: 'hasta', label: 'Hasta (inclusive)', type: 'date', value: a.hasta, required: true },
+    { name: 'cubreId', label: 'Quién cubre', type: 'select', options: [['', '— Sin asignar —'], ...vigOpts().filter(o => o[0] !== a.vigilanteId), ['externo', 'Otra persona (externa)']], value: a.cubreId || (a.cubreNombre ? 'externo' : '') },
+    { name: 'cubreNombre', label: 'Nombre si es externo', value: a.cubreNombre },
+    { name: 'pagoCobertura', label: 'Costo de la cobertura', type: 'number', value: a.pagoCobertura, help: 'Si lo dejas vacío se calcula con el pago por día del reemplazo' },
+    { name: 'nota', label: 'Nota', value: a.nota, full: true }
+  ], v => {
+    if (v.hasta < v.desde) return 'La fecha final es anterior a la inicial';
+    if (v.cubreId === v.vigilanteId && v.cubreId) return 'No puede cubrirse a sí mismo';
+    if (v.cubreId === 'externo') { v.cubreId = ''; if (!v.cubreNombre) return 'Escribe el nombre de quien cubre'; } else v.cubreNombre = '';
+    if (v.pagoCobertura == null && v.cubreId) { const c = db.get('vigilantes', v.cubreId); if (c && c.pagoDia) v.pagoCobertura = num(c.pagoDia) * daysIncl(v.desde, v.hasta); }
+    if (v.tipo === 'vacaciones' && v.vigilanteId) { const vg = db.get('vigilantes', v.vigilanteId), i = vacInfo(vg); const d = daysIncl(v.desde, v.hasta) - (id ? daysIncl(a.desde, a.hasta) : 0); if (!i.sinFecha && i.anios >= 1 && d > i.pend) setTimeout(() => toast('Ojo: excede los días de vacaciones pendientes (' + i.pend + ')'), 100); }
+    db.put('ausencias', { ...a, ...v });
+  });
+};
+A.pagarCobertura = id => {
+  const a = db.get('ausencias', id);
+  const quienCubre = a.cubreId ? vigName(a.cubreId) : a.cubreNombre;
+  openForm('Pagar cobertura a ' + quienCubre, [
+    { name: 'monto', label: 'Monto', type: 'number', value: a.pagoCobertura, required: true },
+    { name: 'fecha', label: 'Fecha de pago', type: 'date', value: today() },
+    { name: 'cuenta', label: 'Se pagó de', type: 'select', options: cuentaOpts(), value: 'chica' },
+    { name: 'comprobante', label: 'Recibo firmado (foto)', type: 'file', full: true }
+  ], v => {
+    const g = db.put('gastos', { fecha: v.fecha, categoria: 'Coberturas / reemplazos', concepto: `Cobertura de ${vigName(a.vigilanteId)} (${TIPOS_AUS[a.tipo]}) ${fdate(a.desde)}–${fdate(a.hasta)} por ${quienCubre}`, monto: v.monto, cuenta: v.cuenta, comprobante: v.comprobante, vigilanteId: a.cubreId || '', proveedor: quienCubre, estado: 'aprobado', registradoPor: quien() });
+    db.put('ausencias', { ...a, gastoId: g.id, pagoCobertura: v.monto });
+  }, { toast: 'Cobertura pagada' });
+};
+A.nomina = vid => {
+  const v0 = vid ? db.get('vigilantes', vid) : db.all('vigilantes').filter(v => v.activo !== false)[0];
+  if (!v0) return toast('Primero agrega vigilantes');
+  const el = openForm('Pago de nómina', [
+    { name: 'vigilanteId', label: 'Vigilante', type: 'select', options: vigOpts(null, false), value: v0.id },
+    { name: 'tipo', label: 'Concepto', type: 'select', options: ['Sueldo', 'Prima vacacional', 'Aguinaldo', 'Tiempo extra / día festivo', 'Préstamo / adelanto', 'Otro'] },
+    { name: 'periodo', label: 'Periodo', placeholder: 'Ej. semana del 3 al 9 de nov' },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'monto', label: 'Monto', type: 'number', value: v0.sueldo, required: true },
+    { name: 'cuenta', label: 'Se pagó de', type: 'select', options: cuentaOpts(), value: 'chica' },
+    { name: 'comprobante', label: 'Recibo firmado (foto)', type: 'file', full: true }
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    db.put('gastos', { fecha: v.fecha, categoria: CATS[0], concepto: v.tipo + ' · ' + vigName(v.vigilanteId) + (v.periodo ? ' · ' + v.periodo : ''), monto: v.monto, cuenta: v.cuenta, comprobante: v.comprobante, vigilanteId: v.vigilanteId, proveedor: vigName(v.vigilanteId), estado: 'aprobado', registradoPor: quien() });
+  }, { toast: 'Pago registrado' });
+  const f = $('#mf');
+  const upd = () => { const vg = db.get('vigilantes', f.vigilanteId.value); if (!vg) return; const i = vacInfo(vg); const t = f.tipo.value; f.monto.value = t === 'Sueldo' ? num(vg.sueldo) : t === 'Prima vacacional' ? (i.prima || 0).toFixed(2) : t === 'Aguinaldo' ? (i.aguinaldo || 0).toFixed(2) : ''; };
+  f.vigilanteId.onchange = upd; f.tipo.onchange = upd;
+};
+
+/* ---- Servicios ---- */
+A.servicio = id => {
+  const s = id ? db.get('servicios', id) : { frecuencia: 'mensual', dia: 1, responsable: 'admin', cuenta: 'banco' };
+  openForm(id ? 'Editar servicio' : 'Agregar servicio recurrente', [
+    { name: 'nombre', label: 'Nombre', value: s.nombre, required: true, placeholder: 'Ej. Recolección de basura' },
+    { name: 'categoria', label: 'Categoría', type: 'select', options: CATS, value: s.categoria },
+    { name: 'proveedor', label: 'Proveedor', value: s.proveedor },
+    { name: 'monto', label: 'Monto aproximado', type: 'number', value: s.monto },
+    { name: 'frecuencia', label: 'Frecuencia', type: 'select', options: ['semanal', 'mensual', 'bimestral'], value: s.frecuencia },
+    { name: 'dia', label: 'Día de pago (mensual/bimestral)', type: 'number', step: '1', value: s.dia },
+    { name: 'responsable', label: 'Quién lo paga', type: 'select', options: [['admin', 'Administrador'], ['caseta', 'Caseta (con el fondo)']], value: s.responsable },
+    { name: 'cuenta', label: 'De qué caja (si paga el admin)', type: 'select', options: cuentaOpts(['banco', 'chica']), value: s.cuenta }
+  ], v => { db.put('servicios', { ...s, ...v }); });
+  if (id) $('#mf .mact').insertAdjacentHTML('afterbegin', `<button type="button" class="btn danger" style="margin-right:auto" onclick="closeModal();A.borrar('servicios','${id}')">Borrar</button>`);
+};
+A.pagarServicio = id => { const s = db.get('servicios', id); if (s.responsable === 'caseta') return A.pagoCaseta(s.categoria, id, true); A.gasto(null, { categoria: s.categoria, concepto: s.nombre, monto: s.monto, proveedor: s.proveedor, cuenta: s.cuenta || 'banco', servicioId: id }); };
+
+/* ---- Caseta ---- */
+A.entrada = (frecId, preId) => {
+  const p = frecId ? db.get('frecuentes', frecId) : preId ? db.get('preregistros', preId) : {};
+  openForm('Registrar entrada', [
+    { name: 'casa', label: 'Casa que visita', type: 'select', options: casaOpts(), value: p.casa || '' },
+    { name: 'nombre', label: 'Nombre', value: p.nombre, required: true },
+    { name: 'tipo', label: 'Tipo', type: 'select', options: TIPOS_VISITA, value: frecId ? (p.motivo && TIPOS_VISITA.includes(p.motivo) ? p.motivo : 'Proveedor / servicio') : 'Visita' },
+    { name: 'placas', label: 'Placas (si viene en auto)' },
+    { name: 'nota', label: 'Nota', value: p.nota || '' },
+    { name: 'foto', label: 'Foto (opcional)', type: 'file' }
+  ], v => {
+    db.put('visitas', { ...v, casa: +v.casa, entrada: new Date().toISOString(), salida: null, vigilanteId: isCaseta() ? SES.vigilanteId : '', registradoPor: quien() });
+    if (preId) db.put('preregistros', { ...p, estado: 'llegó' });
+  }, { ok: 'Registrar entrada', toast: 'Entrada registrada' });
+};
+A.salida = id => { const v = db.get('visitas', id); db.put('visitas', { ...v, salida: new Date().toISOString() }); render(); toast('Salida registrada'); };
+A.paquete = () => openForm('Recibir paquete', [
+  { name: 'casa', label: 'Para la casa', type: 'select', options: casaOpts() },
+  { name: 'empresa', label: 'Paquetería', placeholder: 'Amazon, DHL, Mercado Libre…' },
+  { name: 'descripcion', label: 'Descripción', placeholder: 'Caja mediana, sobre…', full: true },
+  { name: 'foto', label: 'Foto del paquete', type: 'file' }
+], v => { db.put('paquetes', { ...v, casa: +v.casa, recibido: new Date().toISOString(), vigilanteId: isCaseta() ? SES.vigilanteId : '' }); }, { toast: 'Paquete registrado; la casa lo verá en su inicio' });
+A.entregarPaquete = id => { const p = db.get('paquetes', id); openForm('Entregar paquete a Casa ' + p.casa, [{ name: 'entregadoA', label: '¿A quién se entregó?', required: true, value: (casaRec(p.casa) || {}).propietario || '' }], v => { db.put('paquetes', { ...p, ...v, entregado: new Date().toISOString() }); }, { ok: 'Entregado' }); };
+A.pagoCaseta = (cat, servId, desdeAdmin) => {
+  const s = servId ? db.get('servicios', servId) : null;
+  const catOk = CATS.includes(cat) ? cat : (cat === 'Basura' ? 'Basura' : cat === 'Jardinería' ? 'Jardinería' : 'Otros');
+  openForm('Pago con el fondo de caseta · ' + catOk, [
+    { name: 'concepto', label: 'Concepto', value: s ? s.nombre : catOk === 'Basura' ? 'Recolección de basura' : catOk === 'Jardinería' ? 'Pago a jardinero' : '', required: true, full: true },
+    { name: 'monto', label: 'Monto', type: 'number', value: s ? s.monto : '', required: true },
+    { name: 'proveedor', label: '¿A quién se le pagó?', value: s ? s.proveedor : '' },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'comprobante', label: 'Foto del recibo o ticket', type: 'file', full: true }
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    db.put('gastos', { ...v, categoria: catOk, cuenta: 'vigilante', estado: 'aprobado', servicioId: servId || '', registradoPor: quien() });
+    const resto = saldoCuenta('vigilante');
+    if (resto < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
+  }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b></p>`, toast: 'Pago registrado' });
+};
+A.entregarTurno = () => openForm('Entregar turno', [{ name: 'notas', label: 'Notas para el siguiente turno', type: 'textarea', placeholder: 'Novedades, paquetes pendientes, dinero en caja…' }], v => {
+  const t = db.get('turnos', SES.turnoId); if (t) db.put('turnos', { ...t, fin: new Date().toISOString(), notasEntrega: v.notas });
+  setTimeout(logout, 0);
+}, { ok: 'Entregar y salir', toast: 'Turno entregado' });
+
+/* ---- Casa: visitas, incidencias, emergencia ---- */
+A.prereg = n => openForm('Avisar a caseta que viene una visita', [
+  { name: 'nombre', label: 'Nombre de la visita', required: true },
+  { name: 'fecha', label: 'Día', type: 'date', value: today() },
+  { name: 'nota', label: 'Nota para el vigilante', full: true, placeholder: 'Ej. viene en taxi, dejar pasar' }
+], v => { db.put('preregistros', { ...v, casa: n, estado: 'esperado' }); }, { ok: 'Avisar', toast: 'Caseta ya lo sabe' });
+A.frecuente = n => openForm('Autorizado permanente', [
+  { name: 'nombre', label: 'Nombre', required: true },
+  { name: 'motivo', label: 'Tipo', type: 'select', options: TIPOS_VISITA },
+  { name: 'dias', label: 'Días u horario', placeholder: 'Ej. martes y viernes', full: true }
+], v => { db.put('frecuentes', { ...v, casa: n }); });
+A.incidencia = n => openForm('Reportar un problema', [
+  { name: 'titulo', label: '¿Qué pasa?', required: true, full: true, placeholder: 'Ej. Lámpara fundida en la entrada' },
+  { name: 'desc', label: 'Detalle', type: 'textarea' },
+  { name: 'foto', label: 'Foto', type: 'file', full: true }
+], v => { db.put('incidencias', { ...v, casa: n || (isCaseta() ? 'caseta' : ''), fecha: today(), estado: 'abierta' }); }, { toast: 'Reporte enviado' });
+A.seguimiento = id => { const r = db.get('incidencias', id); openForm('Seguimiento', [{ name: 'estado', label: 'Estado', type: 'select', options: ['abierta', 'en proceso', 'resuelta'], value: r.estado }, { name: 'respuesta', label: 'Respuesta / avance', type: 'textarea', value: r.respuesta }], v => { db.put('incidencias', { ...r, ...v }); }); };
+A.emergencia = n => openForm('Emergencia', [{ name: 'nota', label: '¿Qué pasa? (opcional)', full: true }], v => { db.put('alertas', { casa: n, fecha: new Date().toISOString(), nota: v.nota, atendida: false }); },
+  { intro: '<p>Se mostrará una alerta en la tableta de caseta y al administrador.</p><p><b>Si es una emergencia médica o de seguridad, llama también al 911.</b></p><p><a class="btn danger" href="tel:911">Llamar al 911</a></p>', ok: 'Avisar a caseta', toast: 'Alerta enviada a caseta' });
+A.atenderAlerta = id => { db.put('alertas', { ...db.get('alertas', id), atendida: true, atendidaPor: quien(), atendidaEn: new Date().toISOString() }); render(); };
+A.miCasa = n => { const c = casaRec(n); openForm('Mis datos · Casa ' + n, [
+  { name: 'telefono', label: 'Teléfono', value: c.telefono, type: 'tel' },
+  { name: 'pin', label: 'Mi PIN', value: c.pin, maxlength: 4, inputmode: 'numeric' },
+  { name: 'emergencia', label: 'Contactos de emergencia (los ve caseta)', type: 'textarea', value: c.emergencia, placeholder: 'Nombre, parentesco, teléfono' },
+  { name: 'notas', label: 'Indicaciones para caseta (opcional)', type: 'textarea', value: c.notas, placeholder: 'Solo lo que quieras compartir para una emergencia' }
+], v => { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+A.votar = (avisoId, opcion) => { db.put('votos', { id: avisoId + '_' + SES.casa, avisoId, casa: SES.casa, opcion }); render(); toast('Voto registrado: ' + opcion); };
+
+/* ---- Comunidad (admin) ---- */
+A.aviso = () => openForm('Publicar aviso', [
+  { name: 'titulo', label: 'Título', required: true, full: true },
+  { name: 'texto', label: 'Mensaje', type: 'textarea' },
+  { name: 'votacion', label: 'Es una votación', type: 'checkbox' },
+  { name: 'opciones', label: 'Opciones (separadas por coma)', value: 'Sí, No' },
+  { name: 'cierra', label: 'Cierra la votación', type: 'date' },
+  { name: 'archivo', label: 'Adjunto', type: 'file', accept: 'image/*,application/pdf' }
+], v => { db.put('avisos', { ...v, fecha: today(), autor: quien() }); }, { toast: 'Aviso publicado' });
+A.documento = () => openForm('Subir documento', [
+  { name: 'nombre', label: 'Nombre', required: true, full: true },
+  { name: 'categoria', label: 'Tipo', type: 'select', options: ['Reglamento', 'Acta de asamblea', 'Contrato', 'Póliza / seguro', 'Factura', 'Otro'] },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+  { name: 'archivo', label: 'Archivo (PDF o imagen, máx. 4 MB)', type: 'file', accept: 'image/*,application/pdf', full: true }
+], v => { if (!v.archivo) return 'Selecciona el archivo'; db.put('documentos', v); });
+A.contacto = id => { const d = id ? db.get('directorio', id) : {}; openForm(id ? 'Editar contacto' : 'Agregar contacto', [
+  { name: 'nombre', label: 'Nombre', value: d.nombre, required: true }, { name: 'servicio', label: 'Servicio', value: d.servicio, placeholder: 'Plomero, gas, CFE…' },
+  { name: 'telefono', label: 'Teléfono', value: d.telefono, type: 'tel' }, { name: 'nota', label: 'Nota', value: d.nota }
+], v => { db.put('directorio', { ...d, ...v }); }); if (id) $('#mf .mact').insertAdjacentHTML('afterbegin', `<button type="button" class="btn danger" style="margin-right:auto" onclick="closeModal();A.borrar('directorio','${id}')">Borrar</button>`); };
+
+/* ---- Reportes ---- */
+A.presupuesto = () => { const p = cfg().presupuesto || {}; openForm('Presupuesto anual ' + cfg().anio, CATS.map((c, i) => ({ name: 'p' + i, label: c, type: 'number', value: p[c] || '' })), v => { const o = {}; CATS.forEach((c, i) => { if (v['p' + i]) o[c] = v['p' + i]; }); setCfg({ presupuesto: o }); }, { wide: true }); };
+A.cerrarAnio = () => { const c = cfg(), sig = (num(c.casaAdmin) % NUM_CASAS) + 1; openForm(`Cerrar ${c.anio} y entregar la administración`, [{ name: 'casaAdmin', label: 'Casa que recibe', type: 'select', options: casaOpts(), value: sig }], v => {
+  setCfg({ casaAdmin: +v.casaAdmin, anio: num(c.anio) + 1 });
+  db.put('avisos', { titulo: 'Cambio de administración', texto: `A partir de hoy la administración ${num(c.anio) + 1} está a cargo de ${casaLabel(+v.casaAdmin)}. Gracias a ${casaLabel(c.casaAdmin)} por su gestión.`, fecha: today(), autor: 'Sistema' });
+}, { intro: '<p class="small">Antes de cerrar, imprime o guarda el acta de entrega. Los saldos y el historial se conservan; solo cambia quién administra.</p>', ok: 'Cerrar año', toast: 'Administración entregada' }); };
+
+/* ---- Sistema ---- */
+A.config = () => { const c = cfg(); openForm('Configuración del condominio', [
+  { name: 'nombre', label: 'Nombre del condominio', value: c.nombre, required: true },
+  { name: 'cuota', label: 'Cuota mensual general', type: 'number', value: c.cuota },
+  { name: 'casaAdmin', label: 'Casa que administra', type: 'select', options: casaOpts(), value: c.casaAdmin },
+  { name: 'anio', label: 'Año de administración', type: 'number', step: '1', value: c.anio },
+  { name: 'pinSistema', label: 'PIN del administrador del sistema', value: c.pinSistema, maxlength: 4, inputmode: 'numeric' }
+], v => { if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; setCfg({ ...v, casaAdmin: +v.casaAdmin }); }); };
+A.casa = n => { const c = casaRec(n); openForm('Casa ' + n, [
+  { name: 'propietario', label: 'Propietario(s)', value: c.propietario }, { name: 'telefono', label: 'Teléfono', value: c.telefono, type: 'tel' },
+  { name: 'pin', label: 'PIN', value: c.pin, maxlength: 4, inputmode: 'numeric', required: true },
+  { name: 'cuota', label: 'Cuota propia (vacío = general)', type: 'number', value: c.cuota ?? '' },
+  { name: 'emergencia', label: 'Contactos de emergencia', type: 'textarea', value: c.emergencia },
+  { name: 'notas', label: 'Indicaciones para caseta', type: 'textarea', value: c.notas },
+  { name: 'mayor', label: 'Requiere atención especial (adultos mayores, etc.)', type: 'checkbox', value: c.mayor }
+], v => { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+const SQL_SETUP = `create table if not exists registros (
+  id text primary key,
+  coleccion text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists registros_updated on registros(updated_at);
+create or replace function registros_touch() returns trigger as $$
+begin new.updated_at = clock_timestamp(); return new; end $$ language plpgsql;
+drop trigger if exists registros_touch on registros;
+create trigger registros_touch before insert or update on registros
+  for each row execute function registros_touch();
+alter table registros enable row level security;
+drop policy if exists acceso_app on registros;
+create policy acceso_app on registros for all using (true) with check (true);`;
+A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
+  { name: 'url', label: 'Project URL', value: c.url, required: true, placeholder: 'https://xxxx.supabase.co', full: true },
+  { name: 'key', label: 'Clave pública (anon / publishable key)', value: c.key, required: true, full: true }
+], async v => {
+  const url = v.url.replace(/\/+$/, '');
+  try { const r = await fetch(url + '/rest/v1/registros?select=id&limit=1', { headers: { apikey: v.key, Authorization: 'Bearer ' + v.key } }); if (!r.ok) return 'No se pudo conectar (' + r.status + '). ¿Ya corriste el SQL?'; }
+  catch (e) { return 'No se pudo conectar: ' + e.message; }
+  LS.set('pocito_sync', { url, key: v.key }); S.lastPull = null;
+  COLS.forEach(col => S.cols[col].forEach(r => S.dirty[col + '|' + r.id] = r._u));
+  await persistNow(); await sync();
+}, { wide: true, ok: 'Probar y conectar', toast: 'Conectado', intro: `<p class="small">1. Crea un proyecto gratis en supabase.com. 2. En <b>SQL Editor</b> corre este código una sola vez. 3. En <b>Project Settings → API</b> copia la URL y la clave pública.</p><code class="blk">${esc(SQL_SETUP)}</code><button type="button" class="btn sm mt" onclick="navigator.clipboard.writeText(SQL_SETUP).then(()=>toast('SQL copiado'))">Copiar SQL</button>` }); };
+A.desconectar = () => confirmar('¿Desconectar este dispositivo de la nube? Los datos locales se conservan.', () => { LS.del('pocito_sync'); syncState = { ok: null, msg: 'Modo local', busy: false, last: null }; }, 'Desconectar');
+A.exportar = () => { downloadFile(`respaldo-${cfg().nombre.replace(/\s+/g, '-')}-${today()}.json`, JSON.stringify({ app: 'el-pocito', ver: APP_VER, fecha: new Date().toISOString(), cols: S.cols })); };
+A.importar = file => { if (!file) return; const fr = new FileReader(); fr.onload = () => { try {
+  const d = JSON.parse(fr.result); if (!d.cols) throw new Error('Archivo no válido'); let n = 0;
+  COLS.forEach(col => (d.cols[col] || []).forEach(rec => { const i = S.cols[col].findIndex(x => x.id === rec.id); if (i < 0 || num(rec._u) > num(S.cols[col][i]._u)) { if (i < 0) S.cols[col].push(rec); else S.cols[col][i] = rec; S.dirty[col + '|' + rec.id] = rec._u; n++; } }));
+  persist(); render(); toast(n + ' registros restaurados');
+} catch (e) { toast('Error: ' + e.message); } }; fr.readAsText(file); };
+A.borrarTodo = () => confirmar('¿Borrar TODOS los datos de este dispositivo? Si está conectado a la nube, se volverán a descargar.', async () => {
+  S = { cols: {}, dirty: {}, lastPull: null }; COLS.forEach(c => S.cols[c] = []); ensureBase(); await persistNow(); logout();
+}, 'Borrar todo');
+
+/* ---- Datos de ejemplo ---- */
+A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => {
+  const nombres = ['Familia García', 'Sra. Elena Ruiz', 'Familia Zompa', 'Familia Torres', 'Sr. Manuel Díaz', 'Familia Herrera', 'Familia López'];
+  nombres.forEach((p, i) => { const c = casaRec(i + 1); db.put('casas', { ...c, propietario: p, telefono: '33 1234 56' + pad(i + 10), mayor: i === 1 || i === 4, emergencia: i === 1 ? 'Hija: Laura Ruiz · 33 9876 5432' : '' }); });
+  setCfg({ cuota: 4500, casaAdmin: 3, presupuesto: { 'Vigilancia (nómina)': 230000, 'Basura': 9600, 'Jardinería': 14400, 'CFE (luz)': 12000, 'Agua': 6000, 'Mantenimiento': 20000 } });
+  const v1 = db.put('vigilantes', { nombre: 'José Martínez', telefono: '33 1111 2222', rol: 'titular', sueldo: 2600, periodo: 'semanal', ingreso: '2022-03-15', pin: '1212', horario: '24x24', activo: true });
+  const v2 = db.put('vigilantes', { nombre: 'Ramón Pérez', telefono: '33 3333 4444', rol: 'titular', sueldo: 2600, periodo: 'semanal', ingreso: '2025-01-10', pin: '3434', horario: '24x24', activo: true });
+  const v3 = db.put('vigilantes', { nombre: 'Luis Gómez', telefono: '33 5555 6666', rol: 'reemplazo', sueldo: 0, periodo: 'semanal', pagoDia: 450, pin: '5656', activo: true });
+  const sB = db.put('servicios', { nombre: 'Recolección de basura', categoria: 'Basura', proveedor: 'Don Chuy', monto: 800, frecuencia: 'mensual', dia: 10, responsable: 'caseta' });
+  const sJ = db.put('servicios', { nombre: 'Jardinero', categoria: 'Jardinería', proveedor: 'Pedro', monto: 1200, frecuencia: 'mensual', dia: 12, responsable: 'caseta' });
+  const sC = db.put('servicios', { nombre: 'CFE alumbrado común', categoria: 'CFE (luz)', proveedor: 'CFE', monto: 1000, frecuencia: 'mensual', dia: 15, responsable: 'admin', cuenta: 'banco' });
+  db.put('servicios', { nombre: 'Agua áreas comunes', categoria: 'Agua', proveedor: 'SIAPA', monto: 500, frecuencia: 'mensual', dia: 20, responsable: 'admin', cuenta: 'banco' });
+  const m0 = new Date(); const meses = [2, 1, 0].map(k => { const d = new Date(m0.getFullYear(), m0.getMonth() - k, 1); return isoDate(d).slice(0, 7); });
+  db.put('ingresos', { cuenta: 'banco', fecha: meses[0] + '-01', concepto: 'Saldo inicial recibido', monto: 18000 });
+  db.put('ingresos', { cuenta: 'chica', fecha: meses[0] + '-01', concepto: 'Saldo inicial caja chica', monto: 3000 });
+  meses.forEach((m, k) => {
+    for (let n = 1; n <= NUM_CASAS; n++) {
+      db.put('cargos', { casa: n, fecha: m + '-01', concepto: 'Cuota de mantenimiento ' + mesLabel(m), monto: 4500, tipo: 'ordinaria', clave: 'cuota-' + m });
+      if (!(n === 6 && k > 0) && !(n === 4 && k === 2)) db.put('abonos', { casa: n, fecha: m + '-0' + (2 + n % 6), monto: 4500, metodo: n === 2 ? 'Efectivo' : 'Transferencia', cuenta: n === 2 ? 'chica' : 'banco', estado: 'confirmado' });
+    }
+    db.put('transferencias', { de: 'banco', a: 'chica', monto: 23000, fecha: m + '-05', nota: 'Nómina del mes' });
+    db.put('transferencias', { de: 'chica', a: 'vigilante', monto: 2500, fecha: m + '-05', nota: 'Fondo basura y jardinero' });
+    [1, 2, 3, 4].forEach(w => { const d = m + '-' + pad(Math.min(28, w * 7)); if (d <= today()) { [v1, v2].forEach(v => db.put('gastos', { fecha: d, categoria: CATS[0], concepto: 'Sueldo · ' + v.nombre, monto: 2600, cuenta: 'chica', vigilanteId: v.id, proveedor: v.nombre, estado: 'aprobado', registradoPor: 'Casa 3' })); } });
+    db.put('gastos', { fecha: m + '-10', categoria: 'Basura', concepto: 'Recolección de basura', monto: 800, cuenta: 'vigilante', servicioId: sB.id, proveedor: 'Don Chuy', estado: 'aprobado', registradoPor: 'Caseta (José Martínez)' });
+    db.put('gastos', { fecha: m + '-12', categoria: 'Jardinería', concepto: 'Pago a jardinero', monto: 1200, cuenta: 'vigilante', servicioId: sJ.id, proveedor: 'Pedro', estado: 'aprobado', registradoPor: 'Caseta (Ramón Pérez)' });
+    db.put('gastos', { fecha: m + '-15', categoria: 'CFE (luz)', concepto: 'Alumbrado común', monto: 950 + k * 40, cuenta: 'banco', servicioId: sC.id, proveedor: 'CFE', estado: 'aprobado', registradoPor: 'Casa 3' });
+  });
+  const g = db.put('gastos', { fecha: meses[1] + '-20', categoria: 'Mantenimiento', concepto: 'Reparación de bomba de agua', monto: 1800, cuenta: 'condomino', casaPaga: 5, proveedor: 'Hidráulica Jalisco', estado: 'aprobado', registradoPor: 'Casa 3' }); syncCompensacion(g);
+  db.put('gastos', { fecha: today(), categoria: 'Mantenimiento', concepto: 'Focos para la entrada', monto: 420, cuenta: 'condomino', casaPaga: 1, estado: 'pendiente', registradoPor: 'Casa 1' });
+  db.put('abonos', { casa: 6, fecha: today(), monto: 4500, metodo: 'Transferencia', cuenta: 'banco', estado: 'pendiente', nota: 'Cuota atrasada' });
+  db.put('ausencias', { vigilanteId: v1.id, tipo: 'vacaciones', desde: addDays(today(), 10), hasta: addDays(today(), 16), cubreId: v3.id, pagoCobertura: 450 * 7 });
+  db.put('ausencias', { vigilanteId: v2.id, tipo: 'descanso', desde: addDays(today(), -3), hasta: addDays(today(), -3), cubreId: v3.id, pagoCobertura: 450 });
+  db.put('avisos', { titulo: 'Fumigación', texto: 'El sábado a las 9:00 se fumigarán las áreas comunes. Mantengan mascotas dentro.', fecha: today() });
+  db.put('avisos', { titulo: '¿Pintamos la barda de la entrada?', texto: 'Cotización: $14,000 como cuota especial ($2,000 por casa).', fecha: today(), votacion: true, opciones: 'Sí, No', cierra: addDays(today(), 7) });
+  db.put('frecuentes', { casa: 2, nombre: 'Enfermera Marisol', motivo: 'Proveedor / servicio', dias: 'Lunes a viernes 8:00' });
+  db.put('preregistros', { casa: 4, nombre: 'Primo Roberto', fecha: today(), nota: 'Viene en auto gris', estado: 'esperado' });
+  db.put('visitas', { casa: 1, nombre: 'Técnico de internet', tipo: 'Proveedor / servicio', placas: 'JKL-123', entrada: new Date(Date.now() - 3600e3).toISOString(), salida: null, vigilanteId: v1.id });
+  db.put('paquetes', { casa: 3, empresa: 'Amazon', descripcion: 'Caja mediana', recibido: new Date().toISOString(), vigilanteId: v1.id });
+  db.put('incidencias', { casa: 7, titulo: 'Lámpara fundida en el andador', desc: 'Junto a la casa 7', fecha: today(), estado: 'abierta' });
+  db.put('directorio', { nombre: 'Plomería Martínez', servicio: 'Plomero', telefono: '33 2222 1111' });
+  db.put('directorio', { nombre: 'Gas Express', servicio: 'Gas', telefono: '33 4444 0000' });
+  setTimeout(() => toast('Datos de ejemplo cargados. PIN de vigilantes: 1212, 3434, 5656'), 50);
+});
+
+/* ============ Arranque ============ */
+async function init() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('conectar')) { try { const c = JSON.parse(atob(p.get('conectar'))); if (c.url && c.key) LS.set('pocito_sync', c); } catch (e) { } history.replaceState(null, '', location.pathname); }
+  await IDB.open();
+  const st = await IDB.get('state');
+  if (st && st.cols) { S = st; COLS.forEach(c => { if (!S.cols[c]) S.cols[c] = []; }); S.dirty = S.dirty || {}; }
+  ensureBase();
+  SES = LS.get('pocito_ses');
+  if (SES && SES.tipo === 'caseta' && !db.get('vigilantes', SES.vigilanteId)) SES = null;
+  render();
+  if (syncCfg().url) { syncState.msg = 'Conectando…'; await sync(); }
+  setInterval(() => { if (!document.hidden) sync(); }, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+}
+init();
+
+</script>
+</body>
+</html>

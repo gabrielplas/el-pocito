@@ -1,0 +1,32 @@
+EL POCITO · ADMINISTRACIÓN DEL CONDOMINIO
+=========================================
+
+PROBARLA YA
+  Abre index.html en Chrome o Safari. Entra como "Sistema" con PIN 0000,
+  ve a la pestaña Sistema y pulsa "Cargar datos de ejemplo".
+  PIN de casas por omisión: Casa 1 = 1111, Casa 2 = 2222 ... Casa 7 = 7777.
+  Ejemplo de vigilantes: 1212, 3434, 5656.
+  Así, todo se guarda solo en esa computadora.
+
+PONERLA EN USO PARA LAS 7 CASAS (una sola vez, ~20 min, gratis)
+  1. Base de datos: crea un proyecto en supabase.com. En la app entra a
+     Sistema > Conectar a Supabase, copia el SQL que aparece y córrelo en
+     SQL Editor de Supabase. Pega la URL y la clave pública y conecta.
+  2. Publicar la app: sube esta carpeta completa a netlify.com
+     (arrastrar y soltar en "Deploy manually") o a GitHub Pages.
+     Obtendrás una dirección tipo https://el-pocito.netlify.app
+  3. Abre esa dirección, conecta Supabase y en Sistema copia el
+     "Enlace de instalación". Mándalo por WhatsApp a cada casa y ábrelo
+     en la tableta de caseta. En el celular: menú > "Agregar a pantalla
+     de inicio" para que quede como app.
+  4. Antes de usarla en serio: Sistema > Borrar datos de este dispositivo
+     (si cargaste el ejemplo), captura propietarios, cambia los PIN,
+     da de alta vigilantes, servicios y saldos iniciales en Cajas.
+
+RESPALDO
+  Sistema > Descargar respaldo, una vez al mes.
+
+SEGURIDAD
+  Los PIN protegen el acceso dentro de la app; la clave de Supabase va
+  dentro del enlace de instalación, así que compártelo solo con las casas
+  y la caseta.
