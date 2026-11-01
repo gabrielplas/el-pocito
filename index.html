@@ -223,6 +223,21 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .imgfull{max-width:100%;border-radius:14px}
 .err{color:var(--bad);text-align:center;min-height:1.4em}
 .logi{padding:.65rem .85rem}
+.money-in{position:relative;display:flex;align-items:center}
+.money-in span{position:absolute;left:.85rem;color:var(--muted);font-weight:600;pointer-events:none}
+.money-in input{padding-left:1.7rem!important;font-variant-numeric:tabular-nums;font-weight:600}
+.cajas3{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:.6rem 0 .2rem}
+.cajas3 .cj{background:rgba(var(--tint),.05);border:1px solid var(--line);border-radius:14px;padding:.55rem .65rem}
+.cajas3 .lbl{font-size:.72rem}.cajas3 .v{font-weight:700;font-variant-numeric:tabular-nums;font-size:.95rem}.cajas3 .v.neg{color:var(--bad)}
+.trf{display:flex;flex-wrap:wrap;gap:.3rem .9rem;font-size:.85rem;color:var(--muted)}.trf b{color:var(--ink);font-weight:600}
+.btn:disabled,.btn.primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.feed{display:flex;flex-direction:column}
+.fe{display:flex;gap:.75rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--line)}
+.fe:last-child{border-bottom:0}
+.fi{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(var(--tint),.07);flex:none;color:var(--muted)}
+.fi svg{width:17px;height:17px}
+.fe.ok .fi{background:var(--ok-soft);color:var(--ok)}.fe.warn .fi{background:var(--warn-soft);color:var(--warn)}.fe.bad .fi{background:var(--bad-soft);color:var(--bad)}
+.ft{flex:1;min-width:0;font-size:.93rem}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -338,8 +353,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.3';
+const APP_VER = '2.4';
 const NOVEDADES = [
+  ['2.4', 'Montos con formato $ al escribir · Teléfonos solo números · Traspasos con saldos y validación · Resumen de movimientos en el inicio · Respaldos automáticos al actualizar'],
   ['2.3', 'Paquetes: entrega marcada por caseta o por la casa · Apartado de palapa y estacionamiento con autorización · Botón para salir en caseta'],
   ['2.2', 'Cobros en efectivo por vigilantes con entrega y confirmación del administrador · Bitácora de accesos y actividad · Ventanas corregidas en celular'],
   ['2.1', 'Sincronización al guardar · Botón para sincronizar · Versión visible'],
@@ -389,6 +405,23 @@ const LS = {
   set(k, v) { memStore[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
   del(k) { delete memStore[k]; try { localStorage.removeItem(k); } catch (e) { } }
 };
+/* ============ Respaldos automáticos ============ */
+async function autoBackup(force) {
+  try {
+    const prev = LS.get('pocito_ver'), hoy = today();
+    const list = (await IDB.get('autobk')) || [];
+    const hayDatos = COLS.some(c => c !== 'config' && c !== 'casas' && (S.cols[c] || []).length);
+    const motivo = force ? 'Manual' : prev && prev !== APP_VER ? `Antes de actualizar de v${prev} a v${APP_VER}` : !list.some(b => b.fecha.slice(0, 10) === hoy) ? 'Diario' : '';
+    if (motivo && hayDatos) {
+      const key = 'bk_' + Date.now();
+      await IDB.set(key, JSON.parse(JSON.stringify({ cols: S.cols })));
+      list.unshift({ key, fecha: new Date().toISOString(), motivo, ver: prev || APP_VER, n: COLS.reduce((a, c) => a + (S.cols[c] || []).length, 0) });
+      while (list.length > 10) { const old = list.pop(); await IDB.set(old.key, null); }
+      await IDB.set('autobk', list);
+    }
+    LS.set('pocito_ver', APP_VER);
+  } catch (e) { console.warn('respaldo', e); }
+}
 /* ============ Bitácora del sistema ============ */
 let LOG_OFF = false;
 const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común' };
@@ -624,31 +657,59 @@ function field(f) {
     case 'textarea': inp = `<textarea name="${f.name}" rows="3" ${req} placeholder="${esc(f.placeholder || '')}">${esc(v)}</textarea>`; break;
     case 'file': inp = `<input type="file" name="${f.name}" accept="${f.accept || 'image/*'}">`; break;
     case 'checkbox': return `<label class="chk"><input type="checkbox" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
-    case 'number': inp = `<input type="number" name="${f.name}" value="${esc(v)}" step="${f.step || '0.01'}" inputmode="decimal" ${req} ${f.min != null ? 'min="' + f.min + '"' : ''}>`; break;
+    case 'number':
+      if (f.step === '1') { inp = `<input type="text" inputmode="numeric" data-int="1" name="${f.name}" value="${esc(v)}" ${req} oninput="this.value=this.value.replace(/[^0-9]/g,'')">`; break; }
+      inp = `<div class="money-in"><span>$</span><input type="text" inputmode="decimal" autocomplete="off" data-money="1" ${f.neg || /negativ/i.test(f.help || '') ? 'data-neg="1"' : ''} name="${f.name}" value="${v === '' || v == null ? '' : fmtMoneyStr(v)}" placeholder="0.00" ${req} oninput="moneyInput(this)" onblur="moneyBlur(this)"></div>`; break;
+    case 'tel': inp = `<input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]*" name="${f.name}" value="${esc(String(v).replace(/\D/g, ''))}" ${req} placeholder="10 dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">`; break;
     default: inp = `<input type="${f.type || 'text'}" name="${f.name}" value="${esc(v)}" ${req} placeholder="${esc(f.placeholder || '')}" ${f.maxlength ? 'maxlength="' + f.maxlength + '"' : ''} ${f.inputmode ? 'inputmode="' + f.inputmode + '"' : ''}>`;
   }
   return `<label class="fld${full}"><span>${esc(f.label)}</span>${inp}${f.help ? `<small>${esc(f.help)}</small>` : ''}</label>`;
 }
+/* ---- Entradas de dinero ---- */
+const fmtMoneyStr = v => { const n = Math.round((+v || 0) * 100) / 100; return (n < 0 ? '-' : '') + NF.format(Math.abs(n)); };
+const parseMoney = v => { if (v == null) return null; const t = String(v).replace(/[$,\s]/g, ''); if (t === '' || t === '-' || t === '.') return null; const n = parseFloat(t); return isNaN(n) ? null : n; };
+function moneyInput(el) {
+  const neg = el.dataset.neg && el.value.trim().startsWith('-');
+  const pos = el.selectionStart, before = el.value.slice(0, pos).replace(/[^0-9.]/g, '').length;
+  let t = el.value.replace(/[^0-9.]/g, '');
+  const i = t.indexOf('.'); if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2);
+  let [ent, dec] = t.split('.'); ent = (ent || '').replace(/^0+(?=\d)/, '');
+  let out = ent.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec !== undefined ? '.' + dec : '');
+  if (t.startsWith('.')) out = '0' + out;
+  out = (neg ? '-' : '') + out; el.value = out;
+  let k = 0, c = neg ? 1 : 0; while (c < out.length && k < before) { if (/[0-9.]/.test(out[c])) k++; c++; }
+  try { el.setSelectionRange(c, c); } catch (e) { }
+}
+function moneyBlur(el) { const n = parseMoney(el.value); el.value = n == null ? '' : fmtMoneyStr(n); el.form && el.form.dispatchEvent(new Event('input')); }
+function setMoney(el, v) { if (el) el.value = v === '' || v == null ? '' : fmtMoneyStr(v); }
 function openForm(title, fields, onSubmit, opts = {}) {
   const el = modal(`<form id="mf" novalidate><h3>${esc(title)}</h3>${opts.intro || ''}<div class="fields">${fields.map(field).join('')}</div><div class="err" id="mferr"></div><div class="mact"><button type="button" class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="mfok">${esc(opts.ok || 'Guardar')}</button></div></form>`, opts.wide);
   const form = el.querySelector('#mf');
+  const live = () => {
+    const btn = form.querySelector('#mfok'); if (!btn || btn.dataset.busy) return;
+    const falta = fields.some(f => f.required && f.name && form.elements[f.name] && !String(form.elements[f.name].value).trim());
+    let msg = ''; if (!falta && opts.validate) { const v = {}; fields.forEach(f => { if (f.name && form.elements[f.name]) v[f.name] = f.type === 'number' ? parseMoney(form.elements[f.name].value) : form.elements[f.name].value; }); msg = opts.validate(v, form) || ''; }
+    btn.disabled = falta || !!msg; const er = form.querySelector('#mferr'); if (er && opts.validate) er.textContent = msg;
+    if (opts.onLive) opts.onLive(form);
+  };
+  form.addEventListener('input', live); form.addEventListener('change', live); setTimeout(live, 0);
   form.onsubmit = async e => {
     e.preventDefault();
     for (const f of fields) if (f.required && f.name) { const inp = form.elements[f.name]; if (inp && !String(inp.value).trim()) { $('#mferr').textContent = 'Falta: ' + f.label; inp.focus(); return; } }
-    const btn = $('#mfok'); btn.disabled = true;
+    const btn = $('#mfok'); btn.disabled = true; btn.dataset.busy = '1';
     try {
       const fd = new FormData(form), out = {};
       for (const f of fields) {
         if (!f.name) continue;
         if (f.type === 'file') { const file = fd.get(f.name); out[f.name] = file && file.size ? await readFile(file) : (f.keep || null); }
         else if (f.type === 'checkbox') out[f.name] = fd.get(f.name) === 'on';
-        else if (f.type === 'number') out[f.name] = fd.get(f.name) === '' ? null : parseFloat(fd.get(f.name));
+        else if (f.type === 'number') out[f.name] = parseMoney(fd.get(f.name));
         else out[f.name] = (fd.get(f.name) ?? '').toString().trim();
       }
       const r = await onSubmit(out, form);
-      if (typeof r === 'string') { $('#mferr').textContent = r; btn.disabled = false; return; }
+      if (typeof r === 'string') { $('#mferr').textContent = r; btn.disabled = false; delete btn.dataset.busy; return; }
       el.remove(); render(); if (opts.toast !== false) toast(opts.toast || 'Guardado');
-    } catch (err) { $('#mferr').textContent = err.message; btn.disabled = false; }
+    } catch (err) { $('#mferr').textContent = err.message; btn.disabled = false; delete btn.dataset.busy; }
   };
 }
 const cuentaOpts = (incl = ['banco', 'chica', 'vigilante']) => incl.map(k => [k, CUENTAS[k]]);
@@ -907,6 +968,7 @@ V.inicio = () => {
       <button onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button>
       <button class="danger" onclick="A.emergencia(${n})">Emergencia: avisar a caseta</button></div></div>
   </div>
+  <div class="mt">${feedHtml(feedCasa(n), 'feedC')}</div>
   <div class="grid2 mt">
     <div class="card"><div class="row sp"><h3>Avisos</h3><button class="link" onclick="go('comunidad','avisos')">Ver todos</button></div>${avisos.length ? avisos.map(avisoHtml).join('') : '<p class="muted">Sin avisos</p>'}</div>
     <div class="card"><h3>Visitas que esperas</h3>${prer.length ? `<div class="list">${prer.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${fdate(p.fecha)} ${esc(p.nota || '')}</div></div><button class="btn sm" onclick="A.borrar('preregistros','${p.id}')">Cancelar</button></div>`).join('')}</div>` : '<p class="muted">No has avisado de visitas próximas.</p>'}
@@ -1029,7 +1091,8 @@ V.panel = () => {
     <div class="card"><h3>Pagos por vencer</h3>${serv.length ? serv.map(({ s, e }) => `<div class="row sp" style="margin:.35rem 0"><span>${esc(s.nombre)} <span class="small muted">${s.responsable === 'caseta' ? '(lo paga caseta)' : ''}</span></span><span class="tag ${e.cls}">${e.txt}</span></div>`).join('') : '<p class="muted">Nada vence en los próximos 7 días.</p>'}<div class="mt"><button class="btn sm" onclick="go('servicios')">Ver servicios</button></div></div>
     <div class="card"><h3>Saldos por casa</h3>${Array.from({ length: NUM_CASAS }, (_, i) => { const s = saldoCasa(i + 1); return `<div class="row sp" style="margin:.3rem 0"><button class="link" onclick="A.verCasa(${i + 1})">${esc(casaLabel(i + 1))}</button>${s > 0.009 ? `<span class="tag warn">${money(s)}</span>` : s < -0.009 ? `<span class="tag ok">A favor ${money(-s)}</span>` : '<span class="tag ok">Al corriente</span>'}</div>`; }).join('')}</div>
     <div class="card"><h3>Problemas abiertos</h3>${inc.length ? inc.slice(0, 6).map(i => `<div class="row sp" style="margin:.3rem 0"><span>${esc(i.titulo)} <span class="small muted">${esc(casaLabel(i.casa))}</span></span>${tagEstado(i.estado)}</div>`).join('') : '<p class="muted">Ninguno</p>'}<div class="mt"><button class="btn sm" onclick="go('comunidad','incidencias')">Ver todos</button></div></div>
-  </div>`;
+  </div>
+  <div class="mt">${feedHtml(feedAdmin(), 'feedA')}</div>`;
 };
 V.cuotas = () => {
   const pend = db.all('abonos').filter(a => PEND.includes(a.estado));
@@ -1197,6 +1260,7 @@ function actaEntrega() {
 
 /* ============ Vistas: Sistema ============ */
 V.sistema = () => {
+  IDB.get('autobk').then(l => { const nl = l || []; if (JSON.stringify(nl) !== JSON.stringify(BK_LIST)) { BK_LIST = nl; if (UI.view === 'sistema') render(); } });
   const c = cfg(), sc = syncCfg();
   const link = sc.url ? location.href.split('?')[0].split('#')[0] + '?conectar=' + btoa(JSON.stringify({ url: sc.url, key: sc.key })) : '';
   return `<div class="sect"><h2>Sistema</h2></div>
@@ -1212,6 +1276,9 @@ V.sistema = () => {
     <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
     <div class="card"><h3>Pruebas</h3><p class="small muted">Carga datos de ejemplo para conocer la app. Bórralos antes de empezar a usarla en serio.</p><div class="row"><button class="btn" onclick="A.demo()">Cargar datos de ejemplo</button><button class="btn danger" onclick="A.borrarTodo()">Borrar datos de este dispositivo</button></div></div>
   </div>
+  <div class="card mt"><div class="row sp"><h3 style="margin:0">Respaldos automáticos</h3><button class="btn sm" onclick="A.respaldoAhora()">Respaldar ahora</button></div>
+    <p class="small muted">Se guarda uno diario y otro antes de cada actualización (últimos 10, en este dispositivo). Las actualizaciones nunca borran datos; si algo faltara, aquí se recupera.</p>
+    <div class="list mt" id="bklist">${BK_LIST.length ? BK_LIST.map(b => `<div class="item"><div><div class="t">${esc(b.motivo)}</div><div class="small muted">${fdt(b.fecha)} · ${b.n} registros</div></div><button class="btn sm" onclick="A.restaurarAuto('${b.key}')">Recuperar</button></div>`).join('') : '<p class="muted small">Aún no hay respaldos</p>'}</div></div>
   <div class="card mt"><h3>Versión ${APP_VER}</h3>${NOVEDADES.map(([v, t]) => `<div class="small" style="margin:.35rem 0"><span class="tag brand">v${v}</span> ${esc(t)}</div>`).join('')}<p class="small muted mt">Este dispositivo: ${dispositivo()} · ${syncCfg().url ? 'conectado a la nube' : 'modo local'}</p></div>`;
 };
 
@@ -1229,6 +1296,40 @@ V.actividad = () => {
   ${xs.length ? `<div class="list">${xs.slice(0, 300).map(l => `<div class="item logi"><div style="min-width:0;flex:1"><div class="t">${l.accion === 'PIN incorrecto' ? '<span class="tag bad">PIN incorrecto</span>' : l.tipo === 'acceso' ? '<span class="tag brand">' + esc(l.accion) + '</span>' : esc(l.accion)} ${l.detalle ? '<span class="muted" style="font-weight:500">· ' + esc(l.detalle) + '</span>' : ''}</div><div class="small muted">${esc(l.quien)} · ${fdt(l.fecha)} · ${esc(l.disp || '')} · v${esc(l.ver || '')}</div></div></div>`).join('')}</div>` : '<div class="tw"><div class="empty">Sin actividad registrada</div></div>'}
   ${xs.length > 300 ? '<p class="small muted mt">Se muestran los 300 más recientes.</p>' : ''}`;
 };
+
+/* ---- Resumen de movimientos ---- */
+const ts = x => x ? (String(x).length <= 10 ? x + 'T00:00:00' : String(x)) : '';
+function relT(x) { const d = toDate(x), m = (Date.now() - d) / 6e4; if (m < 1) return 'ahora'; if (m < 60) return 'hace ' + Math.round(m) + ' min'; if (m < 1440 && d.toDateString() === new Date().toDateString()) return 'hoy ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); const ay = new Date(); ay.setDate(ay.getDate() - 1); if (d.toDateString() === ay.toDateString()) return 'ayer'; return fdate(isoDate(d)); }
+function feedCasa(n) {
+  const E = [], add = (t, icn, txt, cls = '') => { if (t) E.push({ t: ts(t), icn, txt, cls }); };
+  db.all('paquetes').filter(p => p.casa == n).forEach(p => { const nm = esc(p.empresa || p.descripcion || 'paquete');
+    add(p.recibido, 'box', `Llegó un paquete (${nm}) a caseta`, p.entregado ? '' : 'warn');
+    if (p.entregado) add(p.entregado, 'box', p.entregadoPor === 'casa' ? `Marcaste que recogiste tu paquete (${nm})` : `Caseta entregó tu paquete (${nm}) a ${esc(p.entregadoA || '')}`, 'ok'); });
+  db.all('abonos').filter(a => a.casa == n).forEach(a => {
+    if (a.recibidoPor) { add(a.recibidoEn || a.fecha, 'cash', `Entregaste ${money(a.monto)} a ${esc(a.recibidoPor)} · ${esc(a.concepto || '')}`, a.estado === 'confirmado' ? '' : 'warn');
+      if (a.entregadoEn) add(a.entregadoEn, 'cash', `El vigilante entregó tus ${money(a.monto)} al administrador`); }
+    else if (a.metodo !== 'compensacion') add(a.creado || a.fecha, 'wallet', `${a.registradoPor && a.registradoPor !== 'Casa ' + n ? 'Se registró' : 'Registraste'} un pago de ${money(a.monto)} (${esc(a.metodo || '')})`, a.estado === 'pendiente' ? 'warn' : '');
+    if (a.estado === 'confirmado' && (a.confirmadoEn || a.confirmadoPor)) add(a.confirmadoEn || a._u && new Date(a._u).toISOString(), 'shield', `El administrador confirmó la recepción de ${money(a.monto)}`, 'ok');
+    if (a.estado === 'rechazado') add(a._u && new Date(a._u).toISOString(), 'alert', `Pago de ${money(a.monto)} rechazado`, 'bad'); });
+  db.all('cargos').filter(c => c.casa == n).forEach(c => add(c.fecha, 'receipt', `Cargo: ${esc(c.concepto)} · ${money(c.monto)}`));
+  db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)}`, g.estado === 'pendiente' ? 'warn' : '');
+    if (g.estado === 'aprobado') add(g._u && new Date(g._u).toISOString(), 'shield', `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok'); });
+  db.all('reservas').filter(r => r.casa == n).forEach(r => { add(r.creado, 'umbrella', `Apartado de ${AREAS[r.area].toLowerCase()} para el ${fdate(r.fecha)}`, r.estado === 'solicitada' ? 'warn' : '');
+    if (r.estado === 'aprobada' && r.autorizadoEn) add(r.autorizadoEn, 'umbrella', `Autorizaron tu apartado de ${AREAS[r.area].toLowerCase()} (${fdate(r.fecha)})`, 'ok');
+    if (r.estado === 'rechazada') add(r._u && new Date(r._u).toISOString(), 'umbrella', `Rechazaron tu apartado de ${AREAS[r.area].toLowerCase()}${r.motivoRechazo ? ': ' + esc(r.motivoRechazo) : ''}`, 'bad'); });
+  db.all('visitas').filter(v => v.casa == n).forEach(v => add(v.entrada, 'user', `Llegó ${esc(v.nombre)} (${esc(v.tipo || 'visita')})`));
+  db.all('incidencias').filter(i => i.casa == n && i.respuesta).forEach(i => add(i._u && new Date(i._u).toISOString(), 'pencil', `Respuesta a tu reporte "${esc(i.titulo)}": ${esc(i.estado)}`));
+  db.all('avisos').forEach(a => add(a.creado || a.fecha, 'chat', `Nuevo aviso: ${esc(a.titulo)}`));
+  return E.sort((a, b) => a.t < b.t ? 1 : -1);
+}
+function feedHtml(E, key) {
+  const all = UI.f[key], xs = E.slice(0, all ? 60 : 8);
+  return `<div class="card"><div class="row sp"><h3 style="margin:0">Resumen de movimientos</h3>${E.length > 8 ? `<button class="link" onclick="UI.f['${key}']=!UI.f['${key}'];render()">${all ? 'Ver menos' : 'Ver todo'}</button>` : ''}</div>
+    ${xs.length ? `<div class="feed mt">${xs.map(e => `<div class="fe ${e.cls}"><span class="fi">${ic(e.icn)}</span><div class="ft">${e.txt}<div class="small muted">${relT(e.t)}</div></div></div>`).join('')}</div>` : '<p class="muted small mt">Aún no hay movimientos</p>'}</div>`;
+}
+function feedAdmin() {
+  return sortBy(db.all('logs').filter(l => l.tipo === 'cambio' && !/turno|voto/.test(l.accion)), 'fecha').slice(0, 60).map(l => ({ t: l.fecha, icn: /pago/.test(l.accion) ? 'wallet' : /gasto/.test(l.accion) ? 'receipt' : /paquete/.test(l.accion) ? 'box' : /apartado/.test(l.accion) ? 'umbrella' : /traspaso/.test(l.accion) ? 'swap' : /visita/.test(l.accion) ? 'user' : 'list', txt: `<b>${esc(l.quien)}</b> · ${esc(l.accion.toLowerCase())}${l.detalle ? ' · ' + esc(l.detalle) : ''}`, cls: /Borró/.test(l.accion) ? 'bad' : '' }));
+}
 
 /* ---- Áreas comunes ---- */
 const hm = t => String(t || '').slice(0, 5);
@@ -1459,13 +1560,23 @@ A.borrarGasto = id => confirmar('¿Borrar este gasto?', () => {
 }, 'Borrar');
 
 /* ---- Cajas ---- */
-A.transferencia = (de = 'banco', a = 'chica', desdeCaseta) => openForm(desdeCaseta ? 'Devolver dinero del fondo' : 'Mover dinero entre cajas', [
-  { name: 'de', label: 'De', type: 'select', options: cuentaOpts(desdeCaseta ? ['vigilante'] : undefined), value: de },
-  { name: 'a', label: 'A', type: 'select', options: cuentaOpts(desdeCaseta ? ['chica', 'banco'] : undefined), value: a },
-  { name: 'monto', label: 'Monto', type: 'number', required: true },
-  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
-  { name: 'nota', label: 'Nota', full: true, placeholder: a === 'vigilante' ? 'Ej. Fondo para basura y jardinero de noviembre' : '' }
-], v => { if (v.de === v.a) return 'Elige cajas distintas'; if (!(v.monto > 0)) return 'Escribe el monto'; db.put('transferencias', { ...v, registradoPor: quien() }); });
+A.transferencia = (de = 'banco', a = 'chica', desdeCaseta) => {
+  const ks = Object.keys(CUENTAS);
+  openForm(desdeCaseta ? 'Devolver dinero del fondo' : 'Mover dinero entre cajas', [
+    { name: 'de', label: 'De', type: 'select', options: cuentaOpts(desdeCaseta ? ['vigilante'] : undefined).map(([k, l]) => [k, l + ' · ' + money(saldoCuenta(k))]), value: de },
+    { name: 'a', label: 'A', type: 'select', options: cuentaOpts(desdeCaseta ? ['chica', 'banco'] : undefined).map(([k, l]) => [k, l + ' · ' + money(saldoCuenta(k))]), value: a },
+    { name: 'monto', label: 'Monto', type: 'number', required: true },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'nota', label: 'Nota', full: true, placeholder: a === 'vigilante' ? 'Ej. Fondo para basura y jardinero de noviembre' : '' },
+    { type: 'html', html: '<div class="fld full"><div class="trf" id="trfPrev"></div></div>' }
+  ], v => { if (v.de === v.a) return 'Elige cajas distintas'; if (!(v.monto > 0)) return 'Escribe el monto'; if (v.monto > saldoCuenta(v.de) + 0.001) return 'No hay suficiente dinero en ' + CUENTAS[v.de]; db.put('transferencias', { ...v, registradoPor: quien() }); }, {
+    ok: 'Mover dinero', toast: 'Traspaso registrado',
+    intro: `<div class="cajas3">${(desdeCaseta ? ['vigilante', 'chica', 'banco'] : ks).map(k => `<div class="cj"><div class="lbl">${CUENTAS[k]}</div><div class="v ${saldoCuenta(k) < 0 ? 'neg' : ''}">${money(saldoCuenta(k))}</div></div>`).join('')}</div>`,
+    validate: v => { if (v.de === v.a) return 'Elige cajas distintas'; if (v.monto == null) return ''; if (!(v.monto > 0)) return 'El monto debe ser mayor a $0.00'; const d = saldoCuenta(v.de); if (v.monto > d + 0.001) return `${CUENTAS[v.de]} solo tiene ${money(d)}`; return ''; },
+    onLive: f => { const m = parseMoney(f.elements.monto.value) || 0, d = f.elements.de.value, t = f.elements.a.value, el = f.querySelector('#trfPrev'); if (!el) return;
+      el.innerHTML = d === t ? '' : `<span>Después del traspaso:</span><b>${CUENTAS[d]}: ${money(saldoCuenta(d) - m)}</b><b>${CUENTAS[t]}: ${money(saldoCuenta(t) + m)}</b>`; }
+  });
+};
 A.ingreso = () => openForm('Otro ingreso o saldo inicial', [
   { name: 'cuenta', label: 'Caja', type: 'select', options: cuentaOpts() },
   { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
@@ -1538,7 +1649,7 @@ A.nomina = vid => {
     db.put('gastos', { fecha: v.fecha, categoria: CATS[0], concepto: v.tipo + ' · ' + vigName(v.vigilanteId) + (v.periodo ? ' · ' + v.periodo : ''), monto: v.monto, cuenta: v.cuenta, comprobante: v.comprobante, vigilanteId: v.vigilanteId, proveedor: vigName(v.vigilanteId), estado: 'aprobado', registradoPor: quien() });
   }, { toast: 'Pago registrado' });
   const f = $('#mf');
-  const upd = () => { const vg = db.get('vigilantes', f.vigilanteId.value); if (!vg) return; const i = vacInfo(vg); const t = f.tipo.value; f.monto.value = t === 'Sueldo' ? num(vg.sueldo) : t === 'Prima vacacional' ? (i.prima || 0).toFixed(2) : t === 'Aguinaldo' ? (i.aguinaldo || 0).toFixed(2) : ''; };
+  const upd = () => { const vg = db.get('vigilantes', f.vigilanteId.value); if (!vg) return; const i = vacInfo(vg); const t = f.tipo.value; setMoney(f.monto, t === 'Sueldo' ? num(vg.sueldo) : t === 'Prima vacacional' ? (i.prima || 0) : t === 'Aguinaldo' ? (i.aguinaldo || 0) : ''); f.dispatchEvent(new Event('input')); };
   f.vigilanteId.onchange = upd; f.tipo.onchange = upd;
 };
 
@@ -1739,6 +1850,12 @@ A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
   await persistNow(); await sync();
 }, { wide: true, ok: 'Probar y conectar', toast: 'Conectado', intro: `<p class="small">1. Crea un proyecto gratis en supabase.com. 2. En <b>SQL Editor</b> corre este código una sola vez. 3. En <b>Project Settings → API</b> copia la URL y la clave pública.</p><code class="blk">${esc(SQL_SETUP)}</code><button type="button" class="btn sm mt" onclick="navigator.clipboard.writeText(SQL_SETUP).then(()=>toast('SQL copiado'))">Copiar SQL</button>` }); };
 A.desconectar = () => confirmar('¿Desconectar este dispositivo de la nube? Los datos locales se conservan.', () => { LS.del('pocito_sync'); syncState = { ok: null, msg: 'Modo local', busy: false, last: null }; }, 'Desconectar');
+A.respaldoAhora = async () => { await autoBackup(true); toast('Respaldo guardado en este dispositivo'); render(); };
+A.restaurarAuto = async key => { const d = await IDB.get(key); if (!d || !d.cols) return toast('Respaldo no disponible');
+  confirmar('¿Recuperar este respaldo? Solo se agregan los registros que falten o sean más recientes; no se borra nada actual.', async () => { let n = 0; LOG_OFF = true;
+    COLS.forEach(col => (d.cols[col] || []).forEach(rec => { const i = S.cols[col].findIndex(x => x.id === rec.id); if (i < 0 || num(rec._u) > num(S.cols[col][i]._u)) { if (i < 0) S.cols[col].push(rec); else S.cols[col][i] = rec; S.dirty[col + '|' + rec.id] = rec._u || Date.now(); n++; } }));
+    LOG_OFF = false; persist(); logEv('Recuperó respaldo automático', n + ' registros', 'cambio'); render(); toast(n + ' registros recuperados'); }, 'Recuperar'); };
+let BK_LIST = [];
 A.exportar = () => { downloadFile(`respaldo-${cfg().nombre.replace(/\s+/g, '-')}-${today()}.json`, JSON.stringify({ app: 'el-pocito', ver: APP_VER, fecha: new Date().toISOString(), cols: S.cols })); };
 A.importar = file => { if (!file) return; const fr = new FileReader(); fr.onload = () => { try {
   const d = JSON.parse(fr.result); if (!d.cols) throw new Error('Archivo no válido'); let n = 0;
@@ -1800,8 +1917,10 @@ async function init() {
   await IDB.open();
   const st = await IDB.get('state');
   if (st && st.cols) { S = st; COLS.forEach(c => { if (!S.cols[c]) S.cols[c] = []; }); S.dirty = S.dirty || {}; }
+  await autoBackup();
   ensureBase();
   SES = LS.get('pocito_ses');
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
   if (SES && SES.tipo === 'caseta' && !db.get('vigilantes', SES.vigilanteId)) SES = null;
   let spl = true; try { spl = !sessionStorage.getItem('pocito_spl'); sessionStorage.setItem('pocito_spl', '1'); } catch (e) { }
   if (spl) { const sp = document.createElement('div'); sp.className = 'splash'; sp.innerHTML = `<div class="lg">${LOGO_SVG}<b>el pocito</b></div>`; document.body.appendChild(sp); setTimeout(() => sp.remove(), 1900); }
