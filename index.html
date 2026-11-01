@@ -193,8 +193,8 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .item .t{font-weight:600}
 
 /* ---------- Modals as sheets ---------- */
-.modal-bg{position:fixed;inset:0;background:rgba(6,7,6,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:4vh 0 0;overflow:auto;animation:bgIn .28s ease both}
-.modal{background:var(--bg-2);border:1px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;padding:1.4rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));width:100%;max-width:600px;box-shadow:0 -20px 60px rgba(0,0,0,.5);animation:sheetIn .48s var(--ease) both;position:relative}
+.modal-bg{position:fixed;inset:0;background:rgba(6,7,6,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:calc(14px + env(safe-area-inset-top)) 0 0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:bgIn .28s ease both}
+.modal{background:var(--bg-2);border:1px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;padding:1.4rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));width:100%;max-width:600px;margin-top:auto;flex:none;box-shadow:0 -20px 60px rgba(0,0,0,.5);animation:sheetIn .48s var(--ease) both;position:relative}
 .modal::before{content:"";position:absolute;top:8px;left:50%;width:40px;height:4px;border-radius:4px;background:rgba(var(--tint),.18);transform:translateX(-50%)}
 .modal.wide{max-width:900px}
 .modal-bg.out{animation:bgOut .22s ease both}
@@ -203,8 +203,8 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 @keyframes sheetIn{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
 @keyframes sheetOut{to{transform:translateY(40px);opacity:0}}
 @media (min-width:720px){
-  .modal-bg{align-items:center;padding:4vh 16px}
-  .modal{border-radius:28px;border-bottom:1px solid var(--line);padding-bottom:1.4rem}
+  .modal-bg{padding:4vh 16px}
+  .modal{border-radius:28px;border-bottom:1px solid var(--line);padding-bottom:1.4rem;margin:auto}
   .modal::before{display:none}
   @keyframes sheetIn{from{transform:translateY(24px) scale(.96);opacity:0}to{transform:none;opacity:1}}
 }
@@ -222,6 +222,10 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .mact{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.6rem}
 .imgfull{max-width:100%;border-radius:14px}
 .err{color:var(--bad);text-align:center;min-height:1.4em}
+.logi{padding:.65rem .85rem}
+.foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
+.modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
+.modal input[readonly]{width:100%}
 
 /* ---------- Splash + Login (lima) ---------- */
 .splash{position:fixed;inset:0;z-index:100;background:var(--brand);display:grid;place-items:center;animation:splOut .5s var(--ease) 1.25s forwards}
@@ -334,9 +338,14 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.1';
+const APP_VER = '2.2';
+const NOVEDADES = [
+  ['2.2', 'Cobros en efectivo por vigilantes con entrega y confirmación del administrador · Bitácora de accesos y actividad · Ventanas corregidas en celular'],
+  ['2.1', 'Sincronización al guardar · Botón para sincronizar · Versión visible'],
+  ['2.0', 'Nuevo diseño · Modo claro y oscuro · Letra grande · Montos en $ · Periodo de administración nov–oct']
+];
 const COLS = ['config','casas','cargos','abonos','ingresos','gastos','transferencias','vigilantes','ausencias','turnos',
-  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas'];
+  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs'];
 const CUENTAS = { banco: 'Cuenta bancaria', chica: 'Caja chica', vigilante: 'Fondo caseta' };
 const CATS = ['Vigilancia (nómina)','Coberturas / reemplazos','Basura','Jardinería','CFE (luz)','Agua','Mantenimiento',
   'Limpieza','Administración / papelería','Extraordinario','Otros'];
@@ -379,6 +388,18 @@ const LS = {
   set(k, v) { memStore[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
   del(k) { delete memStore[k]; try { localStorage.removeItem(k); } catch (e) { } }
 };
+/* ============ Bitácora del sistema ============ */
+let LOG_OFF = false;
+const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia' };
+function dispositivo() { const u = navigator.userAgent; return /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android' : 'Tableta Android') : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : 'Otro'; }
+function logEv(accion, detalle = '', tipo = 'acceso') {
+  try { db.put('logs', { fecha: new Date().toISOString(), quien: SES ? quien() : 'Sin sesión', accion, detalle: String(detalle).slice(0, 200), tipo, disp: dispositivo(), ver: APP_VER }); } catch (e) { }
+}
+function autoLog(acc, c, r) {
+  if (c === 'turnos' && acc === 'Editó' && !r.fin) return;
+  const d = [r.casa ? 'Casa ' + r.casa : '', r.nombre || r.titulo || r.concepto || r.propietario || r.categoria || '', r.monto != null && r.monto !== '' ? money(r.monto) : '', r.estado ? '(' + String(r.estado).replace('_', ' ') + ')' : ''].filter(Boolean).join(' · ');
+  logEv(acc + ' ' + (COL_LBL[c] || c), d, 'cambio');
+}
 const IDB = {
   db: null,
   open() { return new Promise(res => { try { const r = indexedDB.open('elpocito', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => { this.db = r.result; res(true); }; r.onerror = () => res(false); } catch (e) { res(false); } }); },
@@ -409,13 +430,16 @@ const db = {
     rec._u = Date.now();
     const i = S.cols[c].findIndex(r => r.id === rec.id);
     if (i >= 0) S.cols[c][i] = rec; else S.cols[c].push(rec);
-    S.dirty[c + '|' + rec.id] = rec._u; persist(); soonSync(); return rec;
+    S.dirty[c + '|' + rec.id] = rec._u; persist(); soonSync();
+    if (c !== 'logs' && !LOG_OFF) autoLog(i >= 0 ? 'Editó' : 'Agregó', c, rec);
+    return rec;
   },
   del(c, id) {
     const i = S.cols[c].findIndex(r => r.id === id); if (i < 0) return;
     const r = S.cols[c][i];
     S.cols[c][i] = { id: r.id, creado: r.creado, _del: true, _u: Date.now() };
     S.dirty[c + '|' + id] = S.cols[c][i]._u; persist(); soonSync();
+    if (c !== 'logs' && !LOG_OFF) autoLog('Borró', c, r);
   }
 };
 const cfg = () => ({ ...DEFAULT_CFG, ...(S.cols.config.find(r => r.id === 'main') || {}) });
@@ -425,6 +449,9 @@ const casaLabel = n => { if (n === 'caseta') return 'Caseta'; if (!n) return 'Co
 const vigName = id => { const v = db.get('vigilantes', id); return v ? v.nombre : (id ? '—' : ''); };
 
 function ensureBase() {
+  LOG_OFF = true; try { ensureBase0(); } finally { LOG_OFF = false; }
+}
+function ensureBase0() {
   if (!S.cols.config.find(r => r.id === 'main')) db.put('config', { ...DEFAULT_CFG });
   else if (!S.cols.config.find(r => r.id === 'main').perNov) db.put('config', { ...S.cols.config.find(r => r.id === 'main'), perNov: true, anio: anioActual(), casaAdmin: 1 });
   for (let n = 1; n <= NUM_CASAS; n++) if (!S.cols.casas.find(r => r.id === 'c' + n)) db.put('casas', { id: 'c' + n, num: n, propietario: '', telefono: '', pin: String(n).repeat(4), cuota: null, emergencia: '', notas: '', mayor: false });
@@ -670,7 +697,8 @@ function pinKey(k) {
     if (t.tipo === 'casa') ok = (casaRec(t.casa) || {}).pin === LOGIN.pin;
     if (t.tipo === 'sistema') ok = cfg().pinSistema === LOGIN.pin;
     if (t.tipo === 'caseta') ok = (db.get('vigilantes', t.vigilanteId) || {}).pin === LOGIN.pin;
-    if (!ok) { $('#perr').textContent = 'PIN incorrecto'; LOGIN.pin = ''; const pd = $('#pdots'); if (pd) { pd.classList.remove('shake'); void pd.offsetWidth; pd.classList.add('shake'); } if (navigator.vibrate) navigator.vibrate(120); setTimeout(pinDots, 300); return; }
+    if (!ok) { logEv('PIN incorrecto', t.tipo === 'casa' ? 'Casa ' + t.casa : t.tipo === 'caseta' ? 'Caseta · ' + vigName(t.vigilanteId) : 'Sistema');
+      $('#perr').textContent = 'PIN incorrecto'; LOGIN.pin = ''; const pd = $('#pdots'); if (pd) { pd.classList.remove('shake'); void pd.offsetWidth; pd.classList.add('shake'); } if (navigator.vibrate) navigator.vibrate(120); setTimeout(pinDots, 300); return; }
     closeModal();
     SES = { ...t };
     if (t.tipo === 'caseta') {
@@ -681,10 +709,10 @@ function pinKey(k) {
         SES.turnoId = db.put('turnos', { vigilanteId: t.vigilanteId, inicio: new Date().toISOString(), fin: null }).id;
       }
     }
-    LS.set('pocito_ses', SES); LOGIN.paso = 'inicio'; UI.view = null; render();
+    LS.set('pocito_ses', SES); logEv('Inició sesión'); LOGIN.paso = 'inicio'; UI.view = null; render();
   }
 }
-function logout() { SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
+function logout() { if (SES) logEv('Cerró sesión'); SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
 
 /* ============ Iconos ============ */
 const IC = {
@@ -711,6 +739,8 @@ const IC = {
   alert: '<path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
   sos: '<path d="M12 3a6 6 0 0 1 6 6v5l2 3H4l2-3V9a6 6 0 0 1 6-6z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   logout: '<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  list: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  cash: '<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 10v4M18 10v4"/>',
   swap: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>', dot: '<circle cx="12" cy="12" r="3"/>',
@@ -720,12 +750,12 @@ const IC = {
 const ic = n => `<svg class="i" viewBox="0 0 24 24">${IC[n] || IC.dot}</svg>`;
 const LOGO_SVG = '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4.5"/><path class="w" d="M9 27c3.5-3 6.5-3 10 0s6.5 3 10 0 6.5-3 10 0v1a15 15 0 0 1-30 0z" fill="currentColor"/></svg>';
 const brandMark = () => `<div class="brandmark">${LOGO_SVG}<b>el pocito</b></div>`;
-const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
+const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', actividad: 'list', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
 const SHORT = { micuenta: 'Mi cuenta', visitas: 'Visitas', cuotas: 'Cuotas', bitacora: 'Bitácora', c_casas: 'Casas', c_caja: 'Caja', c_turno: 'Turno' };
 
 /* ============ Layout ============ */
 function tabsFor() {
-  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['servicios', 'Servicios'], ['reportes', 'Reportes']];
+  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['actividad', 'Actividad']];
   if (isCaseta()) return [{ items: [['c_visitas', 'Visitas'], ['c_paquetes', 'Paquetes'], ['c_caja', 'Caja caseta'], ['c_casas', 'Casas y emergencias'], ['c_turno', 'Mi turno']] }];
   if (isSistema()) return [{ t: 'Administración', items: admin }, { t: 'General', items: [['comunidad', 'Comunidad'], ['sistema', 'Sistema']] }];
   const g = [{ t: isAdmin() ? 'Mi casa' : '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Mis visitas'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad']] }];
@@ -764,7 +794,7 @@ function render(fromSync) {
     <button onclick="toggleBig()" title="Tamaño de letra" aria-label="Tamaño de letra">A<span style="font-size:${[0.8, 1, 1.2][fsLevel()]}em">A</span></button>
     <button onclick="toggleTheme()" title="${theme() === 'light' ? 'Modo oscuro' : 'Modo claro'}" aria-label="Cambiar tema">${ic(theme() === 'light' ? 'moon' : 'sun')}</button>
     ${isCaseta() ? `<button onclick="A.entregarTurno()">${ic('clock')}<span class="hide-s">Entregar turno</span></button>` : `<button onclick="logout()" title="Salir">${ic('logout')}<span class="hide-s">Salir</span></button>`}</header>
-    <main>${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}</main>
+    <main>${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}<p class="foot">el pocito · v${APP_VER}</p></main>
     <button class="fab" onclick="openQuick()" aria-label="Acciones rápidas">${ic('plus')}</button>
     <nav class="bnav">${prim.map(k => { const it = items.find(i => i[0] === k); return `<button class="${UI.view === k ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic(TAB_IC[k] || 'dot')}</span><span class="l">${esc(SHORT[k] || it[1])}</span></button>`; }).join('')}
       ${extra ? `<button class="${inMore ? 'on' : ''}" onclick="openMore()"><span class="ic">${ic(inMore ? (TAB_IC[UI.view] || 'grid') : 'grid')}</span><span class="l">${inMore ? esc(SHORT[UI.view] || label) : 'Más'}</span></button>` : ''}</nav>`;
@@ -795,7 +825,7 @@ function openMore() {
 }
 function openQuick() {
   let o = [];
-  if (isCaseta()) o = [{ l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
+  if (isCaseta()) o = [{ l: 'Recibir dinero de una casa', ic: 'cash', fn: () => A.cobroCaseta() }, { l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
   else if (isCasa()) { const n = SES.casa; o = [{ l: 'Viene una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Registrar un pago', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }];
     if (isAdmin()) o.push({ l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
     o.push({ l: 'Emergencia', ic: 'sos', cls: 'danger', fn: () => A.emergencia(n) }); }
@@ -805,7 +835,7 @@ function openQuick() {
 function heroHtml() {
   const h = new Date().getHours(); const sal = h < 12 ? 'buenos días' : h < 19 ? 'buenas tardes' : 'buenas noches';
   let who, q, acts;
-  if (isCaseta()) { who = vigName(SES.vigilanteId); q = '¿qué está pasando en la entrada?'; acts = [['user', 'visita', 'A.entrada()'], ['box', 'paquete', 'A.paquete()', 1], ['wallet', 'caja', "go('c_caja')"]]; }
+  if (isCaseta()) { who = vigName(SES.vigilanteId); q = '¿qué está pasando en la entrada?'; acts = [['user', 'visita', 'A.entrada()'], ['box', 'paquete', 'A.paquete()', 1], ['cash', 'cobro', 'A.cobroCaseta()']]; }
   else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'visita', `A.prereg(${SES.casa})`], ['wallet', 'pagar', `A.pagoCasa(${SES.casa})`, 1], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
   else { who = 'administrador'; q = '¿qué revisamos hoy?'; acts = [['receipt', 'gasto', 'A.gasto()'], ['coins', 'cobrar', 'A.pagoAdmin()', 1], ['chat', 'aviso', 'A.aviso()']]; }
   return `<div class="heroWrap"><section class="heroX"><div class="eye">${ic('eye')}<span>${esc(cfg().nombre).toLowerCase()} · ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
@@ -831,7 +861,8 @@ function table(cols, rows, foot, emptyMsg = 'Sin registros') {
   return `<div class="tw"><table><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}">${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody>${foot ? `<tfoot><tr>${foot.map((f, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${f}</td>`).join('')}</tr></tfoot>` : ''}</table></div>`;
 }
 const kpi = (lbl, val, cls = '', sub = '') => `<div class="card kpi ${cls}"><div class="lbl">${esc(lbl)}</div><div class="val">${val}</div>${sub ? `<div class="small muted">${sub}</div>` : ''}</div>`;
-const tagEstado = e => ({ pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
+const PEND = ['pendiente', 'con_vigilante', 'entregado_admin'];
+const tagEstado = e => ({ con_vigilante: '<span class="tag warn">Con el vigilante</span>', entregado_admin: '<span class="tag brand">Entregado al admin · por confirmar</span>', pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
 const mesFiltro = (key, label = 'Mes') => { const v = UI.f[key] ?? ym(); return `<label class="fld" style="max-width:200px"><span>${label}</span><input type="month" value="${v}" onchange="UI.f['${key}']=this.value;render()"></label>`; };
 function estadoCuentaRows(n) {
   const m = [];
@@ -859,8 +890,9 @@ V.inicio = () => {
   const paq = db.all('paquetes').filter(p => p.casa == n && !p.entregado);
   const prer = sortBy(db.all('preregistros').filter(p => p.casa == n && p.fecha >= today() && p.estado !== 'llegó'), 'fecha', false);
   const avisos = sortBy(db.all('avisos'), 'fecha').slice(0, 3);
-  const pend = db.all('abonos').filter(a => a.casa == n && a.estado === 'pendiente').length;
-  return `${paq.length ? `<div class="notice">Tienes ${paq.length} paquete(s) esperándote en caseta: ${paq.map(p => esc(p.empresa || p.descripcion || 'paquete')).join(', ')}</div>` : ''}
+  const pend = db.all('abonos').filter(a => a.casa == n && PEND.includes(a.estado)).length;
+  const conVig = db.all('abonos').filter(a => a.casa == n && (a.estado === 'con_vigilante' || a.estado === 'entregado_admin'));
+  return `${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}${paq.length ? `<div class="notice">Tienes ${paq.length} paquete(s) esperándote en caseta: ${paq.map(p => esc(p.empresa || p.descripcion || 'paquete')).join(', ')}</div>` : ''}
   <div class="grid2">
     <div class="card hero ${s > 0.009 ? 'warn' : 'ok'}"><div class="lbl">Saldo de Casa ${n}</div><div class="big">${money(Math.abs(s))}</div>
       <div>${s > 0.009 ? 'Por pagar' : s < -0.009 ? 'Saldo a favor' : 'Al corriente'}${pend ? ` · ${pend} pago(s) por confirmar` : ''}</div>
@@ -971,7 +1003,8 @@ function directorioHtml(admin) {
 V.panel = () => {
   const c = cfg(), m = ym();
   const porCobrar = Array.from({ length: NUM_CASAS }, (_, i) => Math.max(0, saldoCasa(i + 1))).reduce((a, b) => a + b, 0);
-  const pagosPend = db.all('abonos').filter(a => a.estado === 'pendiente');
+  const pagosPend = db.all('abonos').filter(a => PEND.includes(a.estado));
+  const efVig = db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'entregado_admin');
   const gastosPend = db.all('gastos').filter(g => g.estado === 'pendiente');
   const gMes = sum(gastosValidos().filter(g => ym(g.fecha) === m));
   const serv = db.all('servicios').map(s => ({ s, e: estadoServicio(s) })).filter(x => x.e.dias <= 7).sort((a, b) => a.e.dias - b.e.dias);
@@ -982,7 +1015,7 @@ V.panel = () => {
   return `${venc ? `<div class="notice">El periodo ${perLabel(c.anio)} terminó el 31 de octubre. <button class="link" onclick="go('reportes')">Genera el acta y entrega a la siguiente casa</button>.</div>` : ''}<div class="sect"><h2>Panel de administración</h2><span class="muted">Periodo ${perLabel(c.anio)} · Administra: ${esc(casaLabel(c.casaAdmin))}</span></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}
     ${kpi('Por cobrar a casas', money(porCobrar), porCobrar > 0 ? 'warn' : '')}${kpi('Gastos del mes', money(gMes))}</div>
-  ${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
+  ${efVig.length ? `<div class="notice info">Efectivo cobrado por vigilantes sin confirmar: <b>${money(sum(efVig))}</b> (${efVig.length}). <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
   <div class="grid2">
     <div class="card"><h3>Caseta hoy</h3><p>De turno: <b>${t ? esc(vigName(t.vigilanteId)) + '</b> desde ' + fdt(t.inicio) : 'Nadie ha iniciado turno</b>'}</p>
       ${aus.length ? aus.map(a => `<div class="small">${esc(vigName(a.vigilanteId))}: ${TIPOS_AUS[a.tipo]} · cubre <b>${esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || 'sin asignar')}</b></div>`).join('') : '<div class="small muted">Sin ausencias hoy</div>'}
@@ -994,10 +1027,10 @@ V.panel = () => {
   </div>`;
 };
 V.cuotas = () => {
-  const pend = db.all('abonos').filter(a => a.estado === 'pendiente');
+  const pend = db.all('abonos').filter(a => PEND.includes(a.estado));
   const casas = Array.from({ length: NUM_CASAS }, (_, i) => i + 1);
   return `<div class="sect"><h2>Cuotas y pagos</h2><div class="row"><button class="btn primary" onclick="A.generarCuotas()">Generar cuotas del mes</button><button class="btn" onclick="A.cuotaEspecial()">Cuota especial</button><button class="btn" onclick="A.cargo()">Cargo a una casa</button><button class="btn" onclick="A.pagoAdmin()">Registrar pago</button></div></div>
-  ${pend.length ? `<div class="card"><h3>Pagos por confirmar</h3>${table([{ h: 'Casa', f: a => 'Casa ' + a.casa }, { h: 'Fecha', f: a => fdate(a.fecha) }, { h: 'Método', f: a => esc(a.metodo) }, { h: 'Monto', num: 1, f: a => money(a.monto) }, { h: 'Nota', f: a => esc(a.nota || '') }, { h: 'Comprobante', f: a => fileBtn(a.comprobante) }, { h: '', f: a => `<span class="nowrap"><button class="btn sm primary" onclick="A.confirmarPago('${a.id}')">Confirmar</button> <button class="btn sm" onclick="A.rechazarPago('${a.id}')">Rechazar</button></span>` }], pend)}</div>` : ''}
+  ${pend.length ? `<div class="card"><h3>Pagos por confirmar</h3>${table([{ h: 'Casa', f: a => 'Casa ' + a.casa }, { h: 'Fecha', f: a => fdate(a.fecha) }, { h: 'Método', f: a => esc(a.metodo) + (a.recibidoPor ? `<div class="small muted">Recibió ${esc(a.recibidoPor)}</div>` : '') }, { h: 'Estado', f: a => tagEstado(a.estado) }, { h: 'Monto', num: 1, f: a => money(a.monto) }, { h: 'Nota', f: a => esc([a.concepto, a.nota].filter(Boolean).join(' · ')) }, { h: 'Comprobante', f: a => fileBtn(a.comprobante) }, { h: '', f: a => `<span class="nowrap"><button class="btn sm primary" onclick="A.confirmarPago('${a.id}')">Confirmar</button> <button class="btn sm" onclick="A.rechazarPago('${a.id}')">Rechazar</button></span>` }], pend)}</div>` : ''}
   ${table([
     { h: 'Casa', f: n => `<b>${esc(casaLabel(n))}</b>` },
     { h: 'Cuota', num: 1, f: n => { const r = casaRec(n) || {}; return money(r.cuota != null && r.cuota !== '' ? r.cuota : cfg().cuota) + (r.cuota != null && r.cuota !== '' ? ' <span class="tag brand">propia</span>' : ''); } },
@@ -1174,7 +1207,22 @@ V.sistema = () => {
     <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
     <div class="card"><h3>Pruebas</h3><p class="small muted">Carga datos de ejemplo para conocer la app. Bórralos antes de empezar a usarla en serio.</p><div class="row"><button class="btn" onclick="A.demo()">Cargar datos de ejemplo</button><button class="btn danger" onclick="A.borrarTodo()">Borrar datos de este dispositivo</button></div></div>
   </div>
-  <p class="small muted mt">Versión ${APP_VER}</p>`;
+  <div class="card mt"><h3>Versión ${APP_VER}</h3>${NOVEDADES.map(([v, t]) => `<div class="small" style="margin:.35rem 0"><span class="tag brand">v${v}</span> ${esc(t)}</div>`).join('')}<p class="small muted mt">Este dispositivo: ${dispositivo()} · ${syncCfg().url ? 'conectado a la nube' : 'modo local'}</p></div>`;
+};
+
+V.actividad = () => {
+  const f = UI.sub.actividad || 'todo', w = UI.f.logQ || '';
+  let xs = sortBy(db.all('logs'), 'fecha');
+  const quienes = [...new Set(xs.map(l => l.quien))].sort();
+  if (f !== 'todo') xs = xs.filter(l => l.tipo === f);
+  if (w) xs = xs.filter(l => l.quien === w);
+  const hoy = db.all('logs').filter(l => String(l.fecha).slice(0, 10) === today() && l.accion === 'Inició sesión').length;
+  const fallos = db.all('logs').filter(l => l.accion === 'PIN incorrecto' && l.fecha > addDays(today(), -7)).length;
+  return `<div class="sect"><h2>Actividad</h2>${seg('actividad', [['todo', 'Todo'], ['acceso', 'Accesos'], ['cambio', 'Cambios']], 'todo')}</div>
+  <div class="kpis">${kpi('Inicios de sesión hoy', hoy)}${kpi('PIN incorrectos (7 días)', fallos, fallos >= 5 ? 'warn' : '')}${kpi('Registros en bitácora', db.all('logs').length)}</div>
+  <label class="fld" style="max-width:260px;margin-bottom:.8rem"><span>Persona</span><select onchange="UI.f.logQ=this.value;render()"><option value="">Todas</option>${quienes.map(q => `<option ${q === w ? 'selected' : ''}>${esc(q)}</option>`).join('')}</select></label>
+  ${xs.length ? `<div class="list">${xs.slice(0, 300).map(l => `<div class="item logi"><div style="min-width:0;flex:1"><div class="t">${l.accion === 'PIN incorrecto' ? '<span class="tag bad">PIN incorrecto</span>' : l.tipo === 'acceso' ? '<span class="tag brand">' + esc(l.accion) + '</span>' : esc(l.accion)} ${l.detalle ? '<span class="muted" style="font-weight:500">· ' + esc(l.detalle) + '</span>' : ''}</div><div class="small muted">${esc(l.quien)} · ${fdt(l.fecha)} · ${esc(l.disp || '')} · v${esc(l.ver || '')}</div></div></div>`).join('')}</div>` : '<div class="tw"><div class="empty">Sin actividad registrada</div></div>'}
+  ${xs.length > 300 ? '<p class="small muted mt">Se muestran los 300 más recientes.</p>' : ''}`;
 };
 
 /* ============ Vistas: Caseta (tableta) ============ */
@@ -1198,8 +1246,10 @@ V.c_paquetes = () => `<div class="row"><button class="btn primary lg" onclick="A
 V.c_caja = () => {
   const mv = movimientos('vigilante').slice().reverse().slice(0, 60);
   const serv = db.all('servicios').filter(s => s.responsable === 'caseta');
-  return `<div class="kpis">${kpi('Dinero en caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}</div>
+  const porEnt = sum(db.all('abonos').filter(a => a.estado === 'con_vigilante'));
+  return `<div class="kpis">${kpi('Fondo de caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}${kpi('Cobros por entregar al admin', money(porEnt), porEnt > 0 ? 'warn' : '')}</div>
   <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Basura')">Pagar basura</button><button class="btn primary lg" onclick="A.pagoCaseta('Jardinería')">Pagar jardinero</button><button class="btn lg" onclick="A.pagoCaseta('Otros')">Otro pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
+  ${cobrosCasetaHtml()}
   ${serv.length ? `<div class="card mt"><h3>Pagos a cargo de caseta</h3>${serv.map(s => { const e = estadoServicio(s); return `<div class="row sp" style="margin:.35rem 0"><span><b>${esc(s.nombre)}</b> ${money(s.monto)} ${esc(s.frecuencia)}</span><span class="row"><span class="tag ${e.cls}">${e.txt}</span><button class="btn sm primary" onclick="A.pagoCaseta('${esc(s.categoria)}','${s.id}')">Pagar</button></span></div>`; }).join('')}</div>` : ''}
   <h3 class="mt">Movimientos del fondo</h3>${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) }, { h: 'Entró', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salió', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}`;
 };
@@ -1245,7 +1295,7 @@ A.pagoAdmin = () => openForm('Registrar pago de una casa', [
   { name: 'nota', label: 'Nota' },
   { name: 'comprobante', label: 'Comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
 ], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('abonos', { ...v, casa: +v.casa, estado: 'confirmado', registradoPor: quien() }); });
-A.confirmarPago = id => { const a = db.get('abonos', id); openForm('Confirmar pago de Casa ' + a.casa + ' · ' + money(a.monto), [{ name: 'cuenta', label: '¿A dónde entró el dinero?', type: 'select', options: cuentaOpts(['banco', 'chica']), value: a.cuenta || metodoCuenta(a.metodo) }], v => { db.put('abonos', { ...a, cuenta: v.cuenta, estado: 'confirmado', confirmadoPor: quien() }); }, { ok: 'Confirmar', toast: 'Pago confirmado' }); };
+A.confirmarPago = id => { const a = db.get('abonos', id); openForm((a.recibidoPor ? 'Confirmar que recibiste el efectivo · ' : 'Confirmar pago de ') + 'Casa ' + a.casa + ' · ' + money(a.monto), [{ name: 'cuenta', label: '¿A dónde entró el dinero?', type: 'select', options: cuentaOpts(['banco', 'chica']), value: a.cuenta || metodoCuenta(a.metodo) }], v => { db.put('abonos', { ...a, cuenta: v.cuenta, estado: 'confirmado', confirmadoPor: quien(), confirmadoEn: new Date().toISOString() }); }, { ok: 'Confirmar', toast: 'Pago confirmado', intro: a.recibidoPor ? `<p class="small muted">Lo cobró ${esc(a.recibidoPor)} el ${fdate(a.fecha)}${a.entregadoEn ? ' · te lo entregó el ' + fdt(a.entregadoEn) : ''}<br>Al confirmar se abona al estado de cuenta de la casa.</p>` : '' }); };
 A.rechazarPago = id => { const a = db.get('abonos', id); openForm('Rechazar pago', [{ name: 'motivo', label: 'Motivo', required: true }], v => { db.put('abonos', { ...a, estado: 'rechazado', nota: (a.nota || '') + ' · Rechazado: ' + v.motivo }); }, { ok: 'Rechazar' }); };
 
 /* ---- Cuotas y cargos ---- */
@@ -1476,7 +1526,32 @@ A.pagoCaseta = (cat, servId, desdeAdmin) => {
     if (resto < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
   }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b></p>`, toast: 'Pago registrado' });
 };
-A.entregarTurno = () => openForm('Entregar turno', [{ name: 'notas', label: 'Notas para el siguiente turno', type: 'textarea', placeholder: 'Novedades, paquetes pendientes, dinero en caja…' }], v => {
+A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
+  { name: 'casa', label: 'Casa', type: 'select', options: casaOpts('Elige la casa'), value: casa || '', required: true },
+  { name: 'concepto', label: 'Concepto', type: 'select', options: ['Cuota de mantenimiento', 'Cuota extraordinaria', 'Otro'] },
+  { name: 'monto', label: 'Monto recibido', type: 'number', required: true },
+  { name: 'nota', label: 'Nota (opcional)', placeholder: 'Ej. cuota de noviembre', full: true },
+  { name: 'comprobante', label: 'Foto del dinero o recibo (opcional)', type: 'file', full: true }
+], v => {
+  if (!(v.monto > 0)) return 'Escribe el monto';
+  const vn = isCaseta() ? vigName(SES.vigilanteId) : quien();
+  db.put('abonos', { casa: +v.casa, fecha: today(), monto: v.monto, metodo: 'Efectivo con vigilante', cuenta: 'chica', estado: 'con_vigilante', concepto: v.concepto, nota: v.nota, comprobante: v.comprobante, vigilanteId: isCaseta() ? SES.vigilanteId : '', recibidoPor: vn, recibidoEn: new Date().toISOString(), registradoPor: quien() });
+}, { ok: 'Registrar', toast: 'Registrado. Entrégalo al administrador', intro: '<p class="small muted">Este dinero <b>no</b> entra al fondo de caseta: guárdalo aparte y entrégalo al administrador. La casa verá que lo tienes tú hasta que el administrador lo confirme.</p>' });
+A.entregarCobros = () => {
+  const xs = db.all('abonos').filter(a => a.estado === 'con_vigilante');
+  if (!xs.length) return toast('No hay cobros por entregar');
+  confirmar(`¿Entregaste ${money(sum(xs))} (${xs.length} cobro${xs.length > 1 ? 's' : ''}) al administrador?`, () => { const t = new Date().toISOString(); xs.forEach(a => db.put('abonos', { ...a, estado: 'entregado_admin', entregadoEn: t, entregadoPor: quien() })); toast('Marcado como entregado. Falta que el administrador lo confirme'); }, 'Sí, ya lo entregué');
+};
+A.entregarCobro = id => { const a = db.get('abonos', id); confirmar(`¿Entregaste ${money(a.monto)} de Casa ${a.casa} al administrador?`, () => db.put('abonos', { ...a, estado: 'entregado_admin', entregadoEn: new Date().toISOString(), entregadoPor: quien() }), 'Sí, ya lo entregué'); };
+function cobrosCasetaHtml() {
+  const xs = sortBy(db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'entregado_admin'), 'recibidoEn');
+  const cv = xs.filter(a => a.estado === 'con_vigilante');
+  return `<div class="card mt"><div class="row sp"><h3 style="margin:0">Cobros a casas</h3><button class="btn primary" onclick="A.cobroCaseta()">${ic('cash')} Recibir dinero de una casa</button></div>
+    ${xs.length ? `<div class="list mt">${xs.map(a => `<div class="item"><div><div class="t">Casa ${a.casa} · ${money(a.monto)}</div><div class="small muted">${esc(a.concepto || '')}${a.nota ? ' · ' + esc(a.nota) : ''} · recibió ${esc(a.recibidoPor || '')} ${fdt(a.recibidoEn || a.fecha)}</div><div class="mt" style="margin-top:.3rem">${tagEstado(a.estado)}</div></div>${a.estado === 'con_vigilante' ? `<button class="btn sm" onclick="A.entregarCobro('${a.id}')">Ya lo entregué</button>` : ''}</div>`).join('')}</div>
+      ${cv.length ? `<div class="row sp mt"><span>Por entregar: <b>${money(sum(cv))}</b></span><button class="btn primary" onclick="A.entregarCobros()">Entregar todo al administrador</button></div>` : '<p class="small muted mt">Todo entregado. Falta que el administrador confirme.</p>'}`
+      : '<p class="muted small mt">No hay dinero de casas en caseta.</p>'}</div>`;
+}
+A.entregarTurno = () => openForm('Entregar turno', [{ type: 'html', html: (() => { const x = db.all('abonos').filter(a => a.estado === 'con_vigilante'); return x.length ? `<div class="notice fld full">Hay ${money(sum(x))} de cobros a casas sin entregar al administrador. Déjalo anotado.</div>` : ''; })() }, { name: 'notas', label: 'Notas para el siguiente turno', type: 'textarea', placeholder: 'Novedades, paquetes pendientes, dinero en caja…' }], v => {
   const t = db.get('turnos', SES.turnoId); if (t) db.put('turnos', { ...t, fin: new Date().toISOString(), notasEntrega: v.notas });
   setTimeout(logout, 0);
 }, { ok: 'Entregar y salir', toast: 'Turno entregado' });
@@ -1586,14 +1661,14 @@ A.exportar = () => { downloadFile(`respaldo-${cfg().nombre.replace(/\s+/g, '-')}
 A.importar = file => { if (!file) return; const fr = new FileReader(); fr.onload = () => { try {
   const d = JSON.parse(fr.result); if (!d.cols) throw new Error('Archivo no válido'); let n = 0;
   COLS.forEach(col => (d.cols[col] || []).forEach(rec => { const i = S.cols[col].findIndex(x => x.id === rec.id); if (i < 0 || num(rec._u) > num(S.cols[col][i]._u)) { if (i < 0) S.cols[col].push(rec); else S.cols[col][i] = rec; S.dirty[col + '|' + rec.id] = rec._u; n++; } }));
-  persist(); render(); toast(n + ' registros restaurados');
+  persist(); logEv('Restauró respaldo', n + ' registros', 'cambio'); render(); toast(n + ' registros restaurados');
 } catch (e) { toast('Error: ' + e.message); } }; fr.readAsText(file); };
 A.borrarTodo = () => confirmar('¿Borrar TODOS los datos de este dispositivo? Si está conectado a la nube, se volverán a descargar.', async () => {
   S = { cols: {}, dirty: {}, lastPull: null }; COLS.forEach(c => S.cols[c] = []); ensureBase(); await persistNow(); logout();
 }, 'Borrar todo');
 
 /* ---- Datos de ejemplo ---- */
-A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => {
+A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; setTimeout(() => { LOG_OFF = false; logEv('Cargó datos de ejemplo', '', 'cambio'); }, 0);
   const nombres = ['Familia García', 'Sra. Elena Ruiz', 'Familia Zompa', 'Familia Torres', 'Sr. Manuel Díaz', 'Familia Herrera', 'Familia López'];
   nombres.forEach((p, i) => { const c = casaRec(i + 1); db.put('casas', { ...c, propietario: p, telefono: '33 1234 56' + pad(i + 10), mayor: i === 1 || i === 4, emergencia: i === 1 ? 'Hija: Laura Ruiz · 33 9876 5432' : '' }); });
   setCfg({ cuota: 4500, casaAdmin: 1, anio: anioActual(), presupuesto: { 'Vigilancia (nómina)': 230000, 'Basura': 9600, 'Jardinería': 14400, 'CFE (luz)': 12000, 'Agua': 6000, 'Mantenimiento': 20000 } });
