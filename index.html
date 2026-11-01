@@ -246,6 +246,8 @@ function ensureBase() {
 
 /* ============ Sincronización (Supabase) ============ */
 const syncCfg = () => LS.get('pocito_sync') || {};
+// Las claves nuevas (sb_publishable_...) van solo en apikey; las antiguas (JWT eyJ...) también como Bearer.
+const sbHeaders = k => k && k.startsWith('eyJ') ? { apikey: k, Authorization: 'Bearer ' + k } : { apikey: k };
 let syncState = { ok: null, msg: 'Modo local: los datos solo viven en este dispositivo', busy: false, last: null };
 let pendingRender = false;
 async function sync() {
@@ -253,7 +255,7 @@ async function sync() {
   if (!c.url || !c.key || syncState.busy) return;
   syncState.busy = true; updSyncDot();
   const base = c.url.replace(/\/+$/, '') + '/rest/v1/registros';
-  const H = { apikey: c.key, Authorization: 'Bearer ' + c.key, 'Content-Type': 'application/json' };
+  const H = { ...sbHeaders(c.key), 'Content-Type': 'application/json' };
   try {
     const snap = { ...S.dirty };
     const rows = Object.keys(snap).map(k => { const [col, id] = k.split('|'); const rec = S.cols[col] && S.cols[col].find(r => r.id === id); return rec ? { id: col + ':' + id, coleccion: col, data: rec } : null; }).filter(Boolean);
@@ -1265,6 +1267,7 @@ begin new.updated_at = clock_timestamp(); return new; end $$ language plpgsql;
 drop trigger if exists registros_touch on registros;
 create trigger registros_touch before insert or update on registros
   for each row execute function registros_touch();
+grant select, insert, update, delete on registros to anon, authenticated;
 alter table registros enable row level security;
 drop policy if exists acceso_app on registros;
 create policy acceso_app on registros for all using (true) with check (true);`;
@@ -1273,7 +1276,7 @@ A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
   { name: 'key', label: 'Clave pública (anon / publishable key)', value: c.key, required: true, full: true }
 ], async v => {
   const url = v.url.replace(/\/+$/, '');
-  try { const r = await fetch(url + '/rest/v1/registros?select=id&limit=1', { headers: { apikey: v.key, Authorization: 'Bearer ' + v.key } }); if (!r.ok) return 'No se pudo conectar (' + r.status + '). ¿Ya corriste el SQL?'; }
+  try { const r = await fetch(url + '/rest/v1/registros?select=id&limit=1', { headers: sbHeaders(v.key) }); if (!r.ok) return 'No se pudo conectar (' + r.status + '). ¿Ya corriste el SQL?'; }
   catch (e) { return 'No se pudo conectar: ' + e.message; }
   LS.set('pocito_sync', { url, key: v.key }); S.lastPull = null;
   COLS.forEach(col => S.cols[col].forEach(r => S.dirty[col + '|' + r.id] = r._u));
