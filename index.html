@@ -338,14 +338,15 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.2';
+const APP_VER = '2.3';
 const NOVEDADES = [
+  ['2.3', 'Paquetes: entrega marcada por caseta o por la casa · Apartado de palapa y estacionamiento con autorización · Botón para salir en caseta'],
   ['2.2', 'Cobros en efectivo por vigilantes con entrega y confirmación del administrador · Bitácora de accesos y actividad · Ventanas corregidas en celular'],
   ['2.1', 'Sincronización al guardar · Botón para sincronizar · Versión visible'],
   ['2.0', 'Nuevo diseño · Modo claro y oscuro · Letra grande · Montos en $ · Periodo de administración nov–oct']
 ];
 const COLS = ['config','casas','cargos','abonos','ingresos','gastos','transferencias','vigilantes','ausencias','turnos',
-  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs'];
+  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs','reservas'];
 const CUENTAS = { banco: 'Cuenta bancaria', chica: 'Caja chica', vigilante: 'Fondo caseta' };
 const CATS = ['Vigilancia (nómina)','Coberturas / reemplazos','Basura','Jardinería','CFE (luz)','Agua','Mantenimiento',
   'Limpieza','Administración / papelería','Extraordinario','Otros'];
@@ -390,7 +391,7 @@ const LS = {
 };
 /* ============ Bitácora del sistema ============ */
 let LOG_OFF = false;
-const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia' };
+const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común' };
 function dispositivo() { const u = navigator.userAgent; return /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android' : 'Tableta Android') : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : 'Otro'; }
 function logEv(accion, detalle = '', tipo = 'acceso') {
   try { db.put('logs', { fecha: new Date().toISOString(), quien: SES ? quien() : 'Sin sesión', accion, detalle: String(detalle).slice(0, 200), tipo, disp: dispositivo(), ver: APP_VER }); } catch (e) { }
@@ -739,6 +740,7 @@ const IC = {
   alert: '<path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
   sos: '<path d="M12 3a6 6 0 0 1 6 6v5l2 3H4l2-3V9a6 6 0 0 1 6-6z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   logout: '<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  umbrella: '<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6.5a2 2 0 0 0 4 0"/><path d="M12 3v0"/>',
   list: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
   cash: '<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 10v4M18 10v4"/>',
   swap: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
@@ -750,15 +752,15 @@ const IC = {
 const ic = n => `<svg class="i" viewBox="0 0 24 24">${IC[n] || IC.dot}</svg>`;
 const LOGO_SVG = '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4.5"/><path class="w" d="M9 27c3.5-3 6.5-3 10 0s6.5 3 10 0 6.5-3 10 0v1a15 15 0 0 1-30 0z" fill="currentColor"/></svg>';
 const brandMark = () => `<div class="brandmark">${LOGO_SVG}<b>el pocito</b></div>`;
-const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', actividad: 'list', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
-const SHORT = { micuenta: 'Mi cuenta', visitas: 'Visitas', cuotas: 'Cuotas', bitacora: 'Bitácora', c_casas: 'Casas', c_caja: 'Caja', c_turno: 'Turno' };
+const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', actividad: 'list', areas: 'umbrella', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
+const SHORT = { areas: 'Áreas', micuenta: 'Mi cuenta', visitas: 'Visitas', cuotas: 'Cuotas', bitacora: 'Bitácora', c_casas: 'Casas', c_caja: 'Caja', c_turno: 'Turno' };
 
 /* ============ Layout ============ */
 function tabsFor() {
-  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['actividad', 'Actividad']];
+  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['areas', 'Áreas comunes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['actividad', 'Actividad']];
   if (isCaseta()) return [{ items: [['c_visitas', 'Visitas'], ['c_paquetes', 'Paquetes'], ['c_caja', 'Caja caseta'], ['c_casas', 'Casas y emergencias'], ['c_turno', 'Mi turno']] }];
   if (isSistema()) return [{ t: 'Administración', items: admin }, { t: 'General', items: [['comunidad', 'Comunidad'], ['sistema', 'Sistema']] }];
-  const g = [{ t: isAdmin() ? 'Mi casa' : '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Mis visitas'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad']] }];
+  const g = [{ t: isAdmin() ? 'Mi casa' : '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Visitas y paquetes'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad'], ...(isAdmin() ? [] : [['areas', 'Áreas comunes']])] }];
   if (isAdmin()) g.push({ t: 'Administración', items: admin });
   return g;
 }
@@ -826,10 +828,10 @@ function openMore() {
 function openQuick() {
   let o = [];
   if (isCaseta()) o = [{ l: 'Recibir dinero de una casa', ic: 'cash', fn: () => A.cobroCaseta() }, { l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
-  else if (isCasa()) { const n = SES.casa; o = [{ l: 'Viene una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Registrar un pago', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }];
+  else if (isCasa()) { const n = SES.casa; o = [{ l: 'Apartar palapa o estacionamiento', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Viene una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Registrar un pago', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }];
     if (isAdmin()) o.push({ l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
     o.push({ l: 'Emergencia', ic: 'sos', cls: 'danger', fn: () => A.emergencia(n) }); }
-  else o = [{ l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
+  else o = [{ l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
   blurMenu('', o);
 }
 function heroHtml() {
@@ -862,7 +864,8 @@ function table(cols, rows, foot, emptyMsg = 'Sin registros') {
 }
 const kpi = (lbl, val, cls = '', sub = '') => `<div class="card kpi ${cls}"><div class="lbl">${esc(lbl)}</div><div class="val">${val}</div>${sub ? `<div class="small muted">${sub}</div>` : ''}</div>`;
 const PEND = ['pendiente', 'con_vigilante', 'entregado_admin'];
-const tagEstado = e => ({ con_vigilante: '<span class="tag warn">Con el vigilante</span>', entregado_admin: '<span class="tag brand">Entregado al admin · por confirmar</span>', pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
+const AREAS = { palapa: 'Palapa', estacionamiento: 'Estacionamiento' };
+const tagEstado = e => ({ solicitada: '<span class="tag warn">Por autorizar</span>', aprobada: '<span class="tag ok">Autorizado</span>', rechazada: '<span class="tag bad">Rechazado</span>', cancelada: '<span class="tag">Cancelado</span>', con_vigilante: '<span class="tag warn">Con el vigilante</span>', entregado_admin: '<span class="tag brand">Entregado al admin · por confirmar</span>', pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
 const mesFiltro = (key, label = 'Mes') => { const v = UI.f[key] ?? ym(); return `<label class="fld" style="max-width:200px"><span>${label}</span><input type="month" value="${v}" onchange="UI.f['${key}']=this.value;render()"></label>`; };
 function estadoCuentaRows(n) {
   const m = [];
@@ -892,7 +895,8 @@ V.inicio = () => {
   const avisos = sortBy(db.all('avisos'), 'fecha').slice(0, 3);
   const pend = db.all('abonos').filter(a => a.casa == n && PEND.includes(a.estado)).length;
   const conVig = db.all('abonos').filter(a => a.casa == n && (a.estado === 'con_vigilante' || a.estado === 'entregado_admin'));
-  return `${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}${paq.length ? `<div class="notice">Tienes ${paq.length} paquete(s) esperándote en caseta: ${paq.map(p => esc(p.empresa || p.descripcion || 'paquete')).join(', ')}</div>` : ''}
+  const misRes = sortBy(db.all('reservas').filter(r => r.casa == n && r.fecha >= today() && ['solicitada', 'aprobada'].includes(r.estado)), 'fecha', false);
+  return `${paq.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Paquetes en caseta</h3><span class="tag warn">${paq.length}</span></div><div class="mt">${misPaquetesHtml(n)}</div></div>` : ''}${misRes.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Mis apartados</h3><button class="link" onclick="go('areas')">Ver todos</button></div><div class="list mt">${misRes.map(resItem).join('')}</div></div>` : ''}${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}
   <div class="grid2">
     <div class="card hero ${s > 0.009 ? 'warn' : 'ok'}"><div class="lbl">Saldo de Casa ${n}</div><div class="big">${money(Math.abs(s))}</div>
       <div>${s > 0.009 ? 'Por pagar' : s < -0.009 ? 'Saldo a favor' : 'Al corriente'}${pend ? ` · ${pend} pago(s) por confirmar` : ''}</div>
@@ -926,6 +930,7 @@ V.visitas = () => {
   return `<div class="sect"><h2>Mis visitas</h2><div class="row"><button class="btn primary" onclick="A.prereg(${n})">Avisar visita</button><button class="btn" onclick="A.frecuente(${n})">Agregar autorizado permanente</button></div></div>
   <div class="grid2"><div class="card"><h3>Avisos a caseta</h3>${prer.length ? `<div class="list">${prer.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${fdate(p.fecha)} · ${p.estado === 'llegó' ? 'Ya llegó' : 'Esperado'} ${esc(p.nota || '')}</div></div>${p.estado !== 'llegó' ? `<button class="btn sm" onclick="A.borrar('preregistros','${p.id}')">Cancelar</button>` : ''}</div>`).join('')}</div>` : '<p class="muted">Sin avisos.</p>'}</div>
   <div class="card"><h3>Autorizados permanentes</h3><p class="small muted">Personas que entran seguido (jardinero, familiares, enfermera, trabajadora del hogar).</p>${frec.length ? `<div class="list">${frec.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">${esc(p.motivo || '')} ${esc(p.dias || '')}</div></div><button class="btn sm" onclick="A.borrar('frecuentes','${p.id}')">Quitar</button></div>`).join('')}</div>` : '<p class="muted">Ninguno.</p>'}</div></div>
+  <div class="card mt"><h3>Mis paquetes</h3>${misPaquetesHtml(n, true)}</div>
   <h3 class="mt">Historial de entradas</h3>${visitasTable(hist, false)}`;
 };
 function visitasTable(rows, conCasa = true, acciones = false) {
@@ -1015,7 +1020,7 @@ V.panel = () => {
   return `${venc ? `<div class="notice">El periodo ${perLabel(c.anio)} terminó el 31 de octubre. <button class="link" onclick="go('reportes')">Genera el acta y entrega a la siguiente casa</button>.</div>` : ''}<div class="sect"><h2>Panel de administración</h2><span class="muted">Periodo ${perLabel(c.anio)} · Administra: ${esc(casaLabel(c.casaAdmin))}</span></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}
     ${kpi('Por cobrar a casas', money(porCobrar), porCobrar > 0 ? 'warn' : '')}${kpi('Gastos del mes', money(gMes))}</div>
-  ${efVig.length ? `<div class="notice info">Efectivo cobrado por vigilantes sin confirmar: <b>${money(sum(efVig))}</b> (${efVig.length}). <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
+  ${(() => { const n = db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length; return n ? `<div class="notice">${n} solicitud(es) para apartar palapa o estacionamiento. <button class="link" onclick="go('areas')">Autorizar</button></div>` : ''; })()}${efVig.length ? `<div class="notice info">Efectivo cobrado por vigilantes sin confirmar: <b>${money(sum(efVig))}</b> (${efVig.length}). <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
   <div class="grid2">
     <div class="card"><h3>Caseta hoy</h3><p>De turno: <b>${t ? esc(vigName(t.vigilanteId)) + '</b> desde ' + fdt(t.inicio) : 'Nadie ha iniciado turno</b>'}</p>
       ${aus.length ? aus.map(a => `<div class="small">${esc(vigName(a.vigilanteId))}: ${TIPOS_AUS[a.tipo]} · cubre <b>${esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || 'sin asignar')}</b></div>`).join('') : '<div class="small muted">Sin ausencias hoy</div>'}
@@ -1133,7 +1138,7 @@ V.bitacora = () => {
 };
 function paquetesTable(rows, acciones) {
   return table([{ h: 'Casa', f: p => 'Casa ' + p.casa }, { h: 'Paquete', f: p => `<b>${esc(p.empresa || '')}</b> ${esc(p.descripcion || '')}` }, { h: 'Recibido', f: p => fdt(p.recibido) + `<div class="small muted">${esc(vigName(p.vigilanteId))}</div>` },
-    { h: 'Entregado', f: p => p.entregado ? fdt(p.entregado) + `<div class="small muted">a ${esc(p.entregadoA || '')}</div>` : (acciones ? `<button class="btn sm primary" onclick="A.entregarPaquete('${p.id}')">Entregar</button>` : '<span class="tag warn">En caseta</span>') }, { h: 'Foto', f: p => fileBtn(p.foto) }], rows, null, 'Sin paquetes');
+    { h: 'Entregado', f: p => p.entregado ? fdt(p.entregado) + `<div class="small muted">a ${esc(p.entregadoA || '')}</div><div class="small muted">${esc(paqQuien(p))}</div>` : (acciones ? `<button class="btn sm primary" onclick="A.entregarPaquete('${p.id}')">Entregar</button>` : '<span class="tag warn">En caseta</span>') }, { h: 'Foto', f: p => fileBtn(p.foto) }], rows, null, 'Sin paquetes');
 }
 V.servicios = () => {
   const ss = db.all('servicios');
@@ -1225,6 +1230,36 @@ V.actividad = () => {
   ${xs.length > 300 ? '<p class="small muted mt">Se muestran los 300 más recientes.</p>' : ''}`;
 };
 
+/* ---- Áreas comunes ---- */
+const hm = t => String(t || '').slice(0, 5);
+function resItem(r) {
+  const mine = isCasa() && SES.casa == r.casa, fut = r.fecha >= today();
+  const ligada = r.grupo ? db.all('reservas').find(x => x.grupo === r.grupo && x.id !== r.id && x.estado !== 'cancelada' && x.estado !== 'rechazada') : null;
+  const acc = [];
+  if (isAdmin() && r.estado === 'solicitada') acc.push(`<button class="btn sm primary" onclick="A.autorizarRes('${r.id}')">Autorizar${ligada && ligada.estado === 'solicitada' ? ' ambos' : ''}</button>`, `<button class="btn sm" onclick="A.rechazarRes('${r.id}')">Rechazar</button>`);
+  if ((mine || isAdmin()) && fut && ['solicitada', 'aprobada'].includes(r.estado)) acc.push(`<button class="btn sm ghost" onclick="A.cancelarRes('${r.id}')">Cancelar</button>`);
+  return `<div class="item"><div style="min-width:0"><div class="t"><span class="tag ${r.area === 'palapa' ? 'brand' : ''}">${AREAS[r.area]}</span> ${fdate(r.fecha)} · ${hm(r.horaIni)}–${hm(r.horaFin)}</div>
+    <div class="small muted">${esc(casaLabel(r.casa))}${r.motivo ? ' · ' + esc(r.motivo) : ''}${r.invitados ? ' · ' + esc(r.invitados) + ' invitados' : ''}${ligada ? ' · con ' + AREAS[ligada.area].toLowerCase() : ''}</div>
+    <div style="margin-top:.3rem">${tagEstado(r.estado)}${r.estado === 'aprobada' && r.autorizadoPor ? ` <span class="small muted">${esc(r.autorizadoPor)}</span>` : ''}${r.estado === 'rechazada' && r.motivoRechazo ? ` <span class="small muted">${esc(r.motivoRechazo)}</span>` : ''}</div></div>
+    ${acc.length ? `<div class="row">${acc.join('')}</div>` : ''}</div>`;
+}
+function choqueRes(area, fecha, ini, fin, excl) {
+  return db.all('reservas').find(r => r.area === area && r.fecha === fecha && ['solicitada', 'aprobada'].includes(r.estado) && r.grupo !== excl && hm(r.horaIni) < fin && ini < hm(r.horaFin));
+}
+V.areas = () => {
+  const f = UI.sub.areas || 'prox';
+  const all = db.all('reservas');
+  const sol = sortBy(all.filter(r => r.estado === 'solicitada' && r.fecha >= today()), 'fecha', false);
+  let xs = f === 'prox' ? sortBy(all.filter(r => r.fecha >= today() && r.estado === 'aprobada'), 'fecha', false)
+    : f === 'mias' ? sortBy(all.filter(r => r.casa == (SES.casa || 0)), 'fecha') : sortBy(all.filter(r => r.fecha < today() || ['rechazada', 'cancelada'].includes(r.estado)), 'fecha');
+  const opts = [['prox', 'Próximos'], ...(isCasa() ? [['mias', 'Míos']] : []), ['hist', 'Historial']];
+  return `<div class="sect"><h2>Áreas comunes</h2><button class="btn primary" onclick="A.reservar()">${ic('plus')} Apartar</button></div>
+  <p class="small muted">Palapa y estacionamiento se apartan por separado. Las casas solicitan y el administrador autoriza.</p>
+  ${sol.length && (isAdmin() || isCasa()) ? `<div class="card"><h3>${isAdmin() ? 'Solicitudes por autorizar' : 'Solicitudes pendientes'}</h3><div class="list">${sol.filter(r => isAdmin() || r.casa == SES.casa).map(resItem).join('') || '<p class="muted small">Ninguna tuya</p>'}</div></div>` : ''}
+  <div class="row" style="margin-bottom:.8rem">${seg('areas', opts, 'prox')}</div>
+  ${xs.length ? `<div class="list">${xs.slice(0, 80).map(resItem).join('')}</div>` : '<div class="tw"><div class="empty">Nada por aquí</div></div>'}`;
+};
+
 /* ============ Vistas: Caseta (tableta) ============ */
 V.c_visitas = () => {
   const hoy = today();
@@ -1237,6 +1272,7 @@ V.c_visitas = () => {
     <div class="card"><h3>Esperados hoy</h3>${esper.length ? `<div class="list">${esper.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} ${esc(p.nota || '')}</div></div><button class="btn primary" onclick="A.entrada(null,'${p.id}')">Llegó</button></div>`).join('')}</div>` : '<p class="muted">Nadie avisó visitas para hoy.</p>'}</div>
     <div class="card"><h3>Dentro del condominio</h3>${dentro.length ? `<div class="list">${dentro.map(v => `<div class="item"><div><div class="t">${esc(v.nombre)}</div><div class="small muted">Casa ${v.casa} · ${esc(v.tipo)} · entró ${ftime(v.entrada)} ${esc(v.placas || '')}</div></div><button class="btn primary" onclick="A.salida('${v.id}')">Salió</button></div>`).join('')}</div>` : '<p class="muted">No hay visitas dentro.</p>'}</div>
   </div>
+  ${(() => { const r = sortBy(db.all('reservas').filter(x => x.estado === 'aprobada' && (x.fecha === hoy || x.fecha === addDays(hoy, 1))), 'fecha', false); return r.length ? `<div class="card mt"><h3>Áreas comunes apartadas (hoy y mañana)</h3><div class="list">${r.map(resItem).join('')}</div></div>` : ''; })()}
   <div class="card mt"><h3>Autorizados permanentes</h3>${frec.length ? `<div class="list">${frec.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} · ${esc(p.motivo || '')} ${esc(p.dias || '')}</div></div><button class="btn" onclick="A.entrada('${p.id}')">Entró</button></div>`).join('')}</div>` : '<p class="muted">Ninguno.</p>'}</div>
   <h3 class="mt">Entradas de hoy</h3>${visitasTable(hoyV, true, true)}`;
 };
@@ -1268,11 +1304,47 @@ V.c_turno = () => {
   return `<div class="grid2"><div class="card"><h3>Turno de ${esc(v.nombre || '')}</h3><p>Inicio: ${fdt(t && t.inicio)}</p><button class="btn primary lg" onclick="A.entregarTurno()">Entregar turno</button></div>
     <div class="card"><h3>Notas del turno anterior</h3>${anterior ? `<p class="small muted">${esc(vigName(anterior.vigilanteId))} · ${fdt(anterior.fin)}</p><p style="white-space:pre-wrap">${esc(anterior.notasEntrega || 'Sin notas')}</p>` : '<p class="muted">—</p>'}</div>
     <div class="card"><h3>Mis próximas ausencias y coberturas</h3>${prox.length ? prox.map(a => `<div class="small">${fdate(a.desde)} – ${fdate(a.hasta)}: ${a.vigilanteId === v.id ? 'Tú: ' + TIPOS_AUS[a.tipo] : 'Cubres a ' + esc(vigName(a.vigilanteId))}</div>`).join('') : '<p class="muted">Ninguna</p>'}</div>
-    <div class="card"><h3>Avisos</h3>${sortBy(db.all('avisos'), 'fecha').slice(0, 3).map(avisoHtml).join('') || '<p class="muted">Sin avisos</p>'}</div></div>`;
+    <div class="card"><h3>Avisos</h3>${sortBy(db.all('avisos'), 'fecha').slice(0, 3).map(avisoHtml).join('') || '<p class="muted">Sin avisos</p>'}</div></div>
+    <div style="text-align:center;margin-top:2.2rem"><button class="link small" style="color:var(--muted);font-weight:500;text-decoration:underline" onclick="A.salirCaseta()">Salir al menú principal</button></div>`;
 };
 
 /* ============ Acciones ============ */
 const A = {};
+A.reservar = (areaIni) => {
+  const adm = isAdmin() && !(isCasa() && false);
+  openForm('Apartar área común', [
+    { name: 'area', label: '¿Qué quieres apartar?', type: 'select', options: [['palapa', 'Palapa'], ['estacionamiento', 'Estacionamiento']], value: areaIni || 'palapa' },
+    { type: 'html', html: '<label class="chk" id="conEst"><input type="checkbox" name="conEst"> ¿También apartar el estacionamiento?</label>' },
+    ...(isCasa() && !isAdmin() ? [] : [{ name: 'casa', label: 'Casa', type: 'select', options: casaOpts('Elige la casa'), value: isCasa() ? SES.casa : '', required: true }]),
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today(), required: true },
+    { name: 'horaIni', label: 'Desde', type: 'time', value: '14:00', required: true },
+    { name: 'horaFin', label: 'Hasta', type: 'time', value: '22:00', required: true },
+    { name: 'invitados', label: 'Invitados aprox.', type: 'number', step: '1' },
+    { name: 'motivo', label: 'Motivo', placeholder: 'Ej. cumpleaños, reunión familiar', full: true }
+  ], v => {
+    const casa = +(v.casa || (isCasa() ? SES.casa : 0)); if (!casa) return 'Elige la casa';
+    if (v.fecha < today()) return 'La fecha ya pasó';
+    if (v.horaFin <= v.horaIni) return 'La hora final debe ser después de la inicial';
+    const areas = [v.area]; if (v.area === 'palapa' && $('#mf').elements.conEst.checked) areas.push('estacionamiento');
+    for (const a of areas) { const c = choqueRes(a, v.fecha, v.horaIni, v.horaFin); if (c) return `${AREAS[a]} ya está apartado ese día de ${hm(c.horaIni)} a ${hm(c.horaFin)} (${casaLabel(c.casa)})`; }
+    const grupo = areas.length > 1 ? uid() : '';
+    const admin = isAdmin();
+    areas.forEach(a => db.put('reservas', { area: a, casa, fecha: v.fecha, horaIni: v.horaIni, horaFin: v.horaFin, invitados: v.invitados, motivo: v.motivo, grupo, estado: admin ? 'aprobada' : 'solicitada', solicitadoPor: quien(), autorizadoPor: admin ? 'Registrado por ' + quien() : '' }));
+  }, { ok: 'Apartar', toast: isAdmin() ? 'Apartado registrado' : 'Solicitud enviada al administrador' });
+  const f = $('#mf'), sync = () => { $('#conEst').style.display = f.elements.area.value === 'palapa' ? '' : 'none'; if (f.elements.area.value !== 'palapa') f.elements.conEst.checked = false; };
+  f.elements.area.addEventListener('change', sync); sync();
+};
+A.autorizarRes = id => { const r = db.get('reservas', id); const grp = r.grupo ? db.all('reservas').filter(x => x.grupo === r.grupo && x.estado === 'solicitada') : [r];
+  for (const x of grp) { const c = choqueRes(x.area, x.fecha, hm(x.horaIni), hm(x.horaFin), x.grupo || '_'); if (c && c.id !== x.id && c.estado === 'aprobada') return toast(AREAS[x.area] + ' ya está autorizado a ' + casaLabel(c.casa) + ' en ese horario'); }
+  grp.forEach(x => db.put('reservas', { ...x, estado: 'aprobada', autorizadoPor: 'Autorizó ' + quien(), autorizadoEn: new Date().toISOString() })); render(); toast(grp.length > 1 ? 'Palapa y estacionamiento autorizados' : 'Autorizado'); };
+A.rechazarRes = id => { const r = db.get('reservas', id); openForm('Rechazar apartado', [{ name: 'motivoRechazo', label: 'Motivo (la casa lo verá)', required: true, full: true }], v => { db.put('reservas', { ...r, estado: 'rechazada', motivoRechazo: v.motivoRechazo, autorizadoPor: quien() }); }, { ok: 'Rechazar', toast: 'Rechazado' }); };
+A.cancelarRes = id => { const r = db.get('reservas', id); const lig = r.grupo ? db.all('reservas').filter(x => x.grupo === r.grupo && x.id !== r.id && ['solicitada', 'aprobada'].includes(x.estado)) : [];
+  const doit = arr => arr.forEach(x => db.put('reservas', { ...x, estado: 'cancelada', canceladoPor: quien() }));
+  if (lig.length) { modal(`<h3>¿Qué quieres cancelar?</h3><p class="small muted">Este apartado incluye ${AREAS[lig[0].area].toLowerCase()}.</p><div class="mact" style="flex-wrap:wrap"><button class="btn" onclick="closeModal()">No cancelar</button><button class="btn" id="cx1">Solo ${AREAS[r.area].toLowerCase()}</button><button class="btn danger" id="cx2">Ambos</button></div>`);
+    $('#cx1').onclick = () => { closeModal(); doit([r]); render(); toast('Cancelado'); }; $('#cx2').onclick = () => { closeModal(); doit([r, ...lig]); render(); toast('Cancelados'); }; }
+  else confirmar(`¿Cancelar ${AREAS[r.area].toLowerCase()} del ${fdate(r.fecha)}?`, () => doit([r]), 'Sí, cancelar');
+};
+
 const metodoCuenta = m => m === 'Efectivo' ? 'chica' : 'banco';
 
 A.borrar = (col, id) => confirmar('¿Borrar este registro?', () => db.del(col, id), 'Borrar');
@@ -1509,7 +1581,16 @@ A.paquete = () => openForm('Recibir paquete', [
   { name: 'descripcion', label: 'Descripción', placeholder: 'Caja mediana, sobre…', full: true },
   { name: 'foto', label: 'Foto del paquete', type: 'file' }
 ], v => { db.put('paquetes', { ...v, casa: +v.casa, recibido: new Date().toISOString(), vigilanteId: isCaseta() ? SES.vigilanteId : '' }); }, { toast: 'Paquete registrado; la casa lo verá en su inicio' });
-A.entregarPaquete = id => { const p = db.get('paquetes', id); openForm('Entregar paquete a Casa ' + p.casa, [{ name: 'entregadoA', label: '¿A quién se entregó?', required: true, value: (casaRec(p.casa) || {}).propietario || '' }], v => { db.put('paquetes', { ...p, ...v, entregado: new Date().toISOString() }); }, { ok: 'Entregado' }); };
+A.entregarPaquete = id => { const p = db.get('paquetes', id); openForm('Entregar paquete a Casa ' + p.casa, [{ name: 'entregadoA', label: '¿A quién se entregó?', required: true, value: (casaRec(p.casa) || {}).propietario || '' }], v => { db.put('paquetes', { ...p, ...v, entregado: new Date().toISOString(), entregadoPor: 'caseta', marcadoPor: quien() }); }, { ok: 'Entregado', toast: 'Entregado. La casa ya lo ve como recibido' }); };
+A.recibiPaquete = id => { const p = db.get('paquetes', id); confirmar('¿Ya tienes este paquete (' + (p.empresa || p.descripcion || 'paquete') + ')?', () => { db.put('paquetes', { ...p, entregado: new Date().toISOString(), entregadoA: (casaRec(p.casa) || {}).propietario || 'Casa ' + p.casa, entregadoPor: 'casa', marcadoPor: quien() }); toast('Listo. Caseta ya no lo verá como pendiente'); }, 'Sí, ya lo tengo'); };
+const paqQuien = p => p.entregadoPor === 'casa' ? 'La casa marcó que lo recogió' : p.marcadoPor ? 'Lo entregó ' + p.marcadoPor.replace(/^Caseta \((.*)\)$/, '$1') : '';
+function misPaquetesHtml(n, todos) {
+  const pend = sortBy(db.all('paquetes').filter(p => p.casa == n && !p.entregado), 'recibido');
+  const ent = todos ? sortBy(db.all('paquetes').filter(p => p.casa == n && p.entregado), 'entregado').slice(0, 15) : [];
+  if (!pend.length && !ent.length) return todos ? '<p class="muted small">Sin paquetes</p>' : '';
+  return `<div class="list">${pend.map(p => `<div class="item"><div><div class="t">${ic('box')} ${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Llegó ${fdt(p.recibido)} · recibió ${esc(vigName(p.vigilanteId))}</div><div style="margin-top:.3rem"><span class="tag warn">En caseta</span></div></div><div class="row">${p.foto ? fileBtn(p.foto) : ''}<button class="btn sm primary" onclick="A.recibiPaquete('${p.id}')">Ya lo tengo</button></div></div>`).join('')}
+    ${ent.map(p => `<div class="item"><div><div class="t">${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Entregado ${fdt(p.entregado)} a ${esc(p.entregadoA || '')} · ${esc(paqQuien(p))}</div></div><span class="tag ok">Entregado</span></div>`).join('')}</div>`;
+}
 A.pagoCaseta = (cat, servId, desdeAdmin) => {
   const s = servId ? db.get('servicios', servId) : null;
   const catOk = CATS.includes(cat) ? cat : (cat === 'Basura' ? 'Basura' : cat === 'Jardinería' ? 'Jardinería' : 'Otros');
@@ -1526,6 +1607,7 @@ A.pagoCaseta = (cat, servId, desdeAdmin) => {
     if (resto < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
   }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b></p>`, toast: 'Pago registrado' });
 };
+A.salirCaseta = () => confirmar('¿Salir al menú principal? Tu turno sigue abierto; para cerrarlo usa "Entregar turno".', () => logout(), 'Salir');
 A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
   { name: 'casa', label: 'Casa', type: 'select', options: casaOpts('Elige la casa'), value: casa || '', required: true },
   { name: 'concepto', label: 'Concepto', type: 'select', options: ['Cuota de mantenimiento', 'Cuota extraordinaria', 'Otro'] },
