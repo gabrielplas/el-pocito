@@ -3,8 +3,8 @@
  "short_name": "El Pocito",
  "start_url": "./index.html",
  "display": "standalone",
- "background_color": "#f4f2ed",
- "theme_color": "#1f4d3a",
+ "background_color": "#e2f58b",
+ "theme_color": "#0b0c0b",
  "lang": "es",
  "icons": [
   {
