@@ -348,13 +348,15 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 </head>
 <body>
 <script>try{var t=localStorage.getItem('pocito_theme');document.documentElement.dataset.theme=(t&&JSON.parse(t)==='light')?'light':'dark';var b=JSON.parse(localStorage.getItem('pocito_big')||'0');document.documentElement.classList.add(b===true||b==1?'big':b==2?'huge':'x');}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<script src="config.js"></script>
 <div id="app"></div>
 <div id="modals"></div>
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.4';
+const APP_VER = '2.5';
 const NOVEDADES = [
+  ['2.5', 'Conexión a la nube integrada: todos los dispositivos sincronizan solos · Aviso visible si un dispositivo no está conectado · Descarga completa de la nube en cada actualización'],
   ['2.4', 'Montos con formato $ al escribir · Teléfonos solo números · Traspasos con saldos y validación · Resumen de movimientos en el inicio · Respaldos automáticos al actualizar'],
   ['2.3', 'Paquetes: entrega marcada por caseta o por la casa · Apartado de palapa y estacionamiento con autorización · Botón para salir en caseta'],
   ['2.2', 'Cobros en efectivo por vigilantes con entrega y confirmación del administrador · Bitácora de accesos y actividad · Ventanas corregidas en celular'],
@@ -419,6 +421,7 @@ async function autoBackup(force) {
       while (list.length > 10) { const old = list.pop(); await IDB.set(old.key, null); }
       await IDB.set('autobk', list);
     }
+    if (prev !== APP_VER) S.lastPull = null;
     LS.set('pocito_ver', APP_VER);
   } catch (e) { console.warn('respaldo', e); }
 }
@@ -492,7 +495,7 @@ function ensureBase0() {
 }
 
 /* ============ Sincronización (Supabase) ============ */
-const syncCfg = () => LS.get('pocito_sync') || {};
+const syncCfg = () => { const l = LS.get('pocito_sync'); if (l && l.url) return l; const g = window.POCITO_CONFIG; return g && g.url && g.key ? { url: g.url, key: g.key, integrada: true } : {}; };
 // Las claves nuevas (sb_publishable_...) van solo en apikey; las antiguas (JWT eyJ...) también como Bearer.
 const sbHeaders = k => k && k.startsWith('eyJ') ? { apikey: k, Authorization: 'Bearer ' + k } : { apikey: k };
 let syncState = { ok: null, msg: 'Modo local: los datos solo viven en este dispositivo', busy: false, last: null };
@@ -735,11 +738,11 @@ function loginView() {
       <button class="btn" onclick="LOGIN.paso='inicio';render()">← Regresar</button></div></div>`;
   }
   return `<div class="loginwrap"><div class="login">${brandMark()}<h1>hola,<br>¿quién eres?</h1><p class="muted">${esc(c.nombre)} · Administra este año: <b>${esc(casaLabel(c.casaAdmin))}</b></p>
-    <div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = casaRec(i + 1) || {}; return `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
+    ${syncCfg().url ? '' : `<div class="card" style="margin-top:1.2rem"><b>Este dispositivo no está conectado a la nube.</b><div class="small" style="margin:.3rem 0 .6rem">Pega el enlace de instalación que te mandó el administrador para ver la información de todos.</div><button class="btn" onclick="A.conectarLink()">Conectar este dispositivo</button></div>`}<div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = casaRec(i + 1) || {}; return `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
       <button class="alt" style="--i:7" onclick="LOGIN.paso='vig';render()"><b>Caseta</b><span class="small">Vigilante de turno</span></button>
       <button style="--i:8" onclick="loginPin({tipo:'sistema'},'Administrador del sistema')"><b>Sistema</b><span class="muted small">Administrador de la herramienta</span></button>
     </div>
-    <p class="small muted">Entra con tu PIN de 4 dígitos. ${syncCfg().url ? '' : 'Este dispositivo está en modo local.'} · v${APP_VER}</p></div></div>`;
+    <p class="small muted">Entra con tu PIN de 4 dígitos. ${syncCfg().url ? 'Conectado a la nube.' : 'Este dispositivo está en modo local.'} · v${APP_VER}</p></div></div>`;
 }
 function loginPin(target, label) {
   LOGIN.target = target; LOGIN.pin = '';
@@ -857,7 +860,7 @@ function render(fromSync) {
     <button onclick="toggleBig()" title="Tamaño de letra" aria-label="Tamaño de letra">A<span style="font-size:${[0.8, 1, 1.2][fsLevel()]}em">A</span></button>
     <button onclick="toggleTheme()" title="${theme() === 'light' ? 'Modo oscuro' : 'Modo claro'}" aria-label="Cambiar tema">${ic(theme() === 'light' ? 'moon' : 'sun')}</button>
     ${isCaseta() ? `<button onclick="A.entregarTurno()">${ic('clock')}<span class="hide-s">Entregar turno</span></button>` : `<button onclick="logout()" title="Salir">${ic('logout')}<span class="hide-s">Salir</span></button>`}</header>
-    <main>${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}<p class="foot">el pocito · v${APP_VER}</p></main>
+    <main>${!syncCfg().url ? `<div class="notice">${ic('alert')} <b>Este dispositivo no está conectado a la nube.</b> Lo que se capture aquí no lo verán las demás casas ni el administrador. <button class="link" onclick="A.conectarLink()">Conectar ahora</button></div>` : syncState.ok === false ? `<div class="notice">${ic('alert')} Sin conexión con la nube: ${esc(syncState.msg.replace('Sin conexión con la nube: ', ''))} <button class="link" onclick="syncNow()">Reintentar</button></div>` : ''}${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}<p class="foot">el pocito · v${APP_VER}</p></main>
     <button class="fab" onclick="openQuick()" aria-label="Acciones rápidas">${ic('plus')}</button>
     <nav class="bnav">${prim.map(k => { const it = items.find(i => i[0] === k); return `<button class="${UI.view === k ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic(TAB_IC[k] || 'dot')}</span><span class="l">${esc(SHORT[k] || it[1])}</span></button>`; }).join('')}
       ${extra ? `<button class="${inMore ? 'on' : ''}" onclick="openMore()"><span class="ic">${ic(inMore ? (TAB_IC[UI.view] || 'grid') : 'grid')}</span><span class="l">${inMore ? esc(SHORT[UI.view] || label) : 'Más'}</span></button>` : ''}</nav>`;
@@ -1267,7 +1270,7 @@ V.sistema = () => {
   <div class="grid2">
     <div class="card"><h3>Condominio</h3><p>${esc(c.nombre)} · Cuota general ${money(c.cuota)}<br>Periodo ${perLabel(c.anio)} · Administra ${esc(casaLabel(c.casaAdmin))}</p><button class="btn primary" onclick="A.config()">Editar configuración</button></div>
     <div class="card"><h3>Sincronización en la nube</h3><p class="small">${esc(syncState.msg)}${syncState.last ? ' · ' + syncState.last.toLocaleTimeString('es-MX') : ''}</p>
-      <div class="row"><button class="btn primary" onclick="A.syncConfig()">${sc.url ? 'Cambiar conexión' : 'Conectar a Supabase'}</button>${sc.url ? '<button class="btn" onclick="sync().then(render)">Sincronizar ahora</button><button class="btn" onclick="A.desconectar()">Desconectar</button>' : ''}</div>
+      <div class="row"><button class="btn primary" onclick="A.syncConfig()">${sc.url ? 'Cambiar conexión' : 'Conectar a Supabase'}</button>${sc.url ? '<button class="btn" onclick="sync().then(render)">Sincronizar ahora</button><button class="btn" onclick="A.descargarTodo()">Descargar todo de la nube</button><button class="btn" onclick="A.desconectar()">Desconectar</button>' : ''}</div>
       ${link ? `<p class="small mt">Enlace de instalación para los demás dispositivos (mándalo por WhatsApp a cada casa y ábrelo en la tableta):</p><input style="width:100%" readonly value="${esc(link)}" onclick="this.select()"><button class="btn sm mt" onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Enlace copiado'))">Copiar enlace</button>` : ''}</div>
   </div>
   <h3 class="mt">Casas, propietarios y PIN</h3>
@@ -1836,6 +1839,14 @@ grant select, insert, update, delete on registros to anon, authenticated;
 alter table registros enable row level security;
 drop policy if exists acceso_app on registros;
 create policy acceso_app on registros for all using (true) with check (true);`;
+A.conectarLink = () => openForm('Conectar este dispositivo', [{ name: 'link', label: 'Enlace de instalación', required: true, full: true, placeholder: 'https://gabrielplas.github.io/el-pocito/?conectar=…' }], async v => {
+  let c; try { const q = new URL(v.link.trim()).searchParams.get('conectar'); c = JSON.parse(atob(q)); } catch (e) { return 'Ese enlace no es válido. Pídele al administrador el "Enlace de instalación" (Sistema).'; }
+  if (!c || !c.url || !c.key) return 'Ese enlace no trae la conexión';
+  try { const r = await fetch(c.url + '/rest/v1/registros?select=id&limit=1', { headers: sbHeaders(c.key) }); if (!r.ok) return 'No se pudo conectar (' + r.status + ')'; } catch (e) { return 'No se pudo conectar: ' + e.message; }
+  LS.set('pocito_sync', { url: c.url, key: c.key }); S.lastPull = null; COLS.forEach(col => S.cols[col].forEach(r => S.dirty[col + '|' + r.id] = r._u));
+  await persistNow(); await sync(); logEv('Conectó el dispositivo a la nube', dispositivo(), 'cambio');
+}, { ok: 'Conectar', toast: 'Conectado. Descargando información…', intro: '<p class="small muted">Pega aquí el enlace completo. Solo se hace una vez por dispositivo.</p>' });
+A.descargarTodo = () => confirmar('¿Volver a descargar toda la información de la nube? No se borra nada de este dispositivo.', async () => { S.lastPull = null; await sync(); toast(syncState.ok ? 'Información actualizada desde la nube' : 'No se pudo: ' + syncState.msg); render(); }, 'Descargar');
 A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
   { name: 'url', label: 'Project URL', value: c.url, required: true, placeholder: 'https://xxxx.supabase.co', full: true },
   { name: 'key', label: 'Clave pública (anon / publishable key)', value: c.key, required: true, full: true }
@@ -1867,7 +1878,7 @@ A.borrarTodo = () => confirmar('¿Borrar TODOS los datos de este dispositivo? Si
 }, 'Borrar todo');
 
 /* ---- Datos de ejemplo ---- */
-A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; setTimeout(() => { LOG_OFF = false; logEv('Cargó datos de ejemplo', '', 'cambio'); }, 0);
+A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; S.demo = true; setTimeout(() => { LOG_OFF = false; logEv('Cargó datos de ejemplo', '', 'cambio'); }, 0);
   const nombres = ['Familia García', 'Sra. Elena Ruiz', 'Familia Zompa', 'Familia Torres', 'Sr. Manuel Díaz', 'Familia Herrera', 'Familia López'];
   nombres.forEach((p, i) => { const c = casaRec(i + 1); db.put('casas', { ...c, propietario: p, telefono: '33 1234 56' + pad(i + 10), mayor: i === 1 || i === 4, emergencia: i === 1 ? 'Hija: Laura Ruiz · 33 9876 5432' : '' }); });
   setCfg({ cuota: 4500, casaAdmin: 1, anio: anioActual(), presupuesto: { 'Vigilancia (nómina)': 230000, 'Basura': 9600, 'Jardinería': 14400, 'CFE (luz)': 12000, 'Agua': 6000, 'Mantenimiento': 20000 } });
@@ -1921,6 +1932,7 @@ async function init() {
   ensureBase();
   SES = LS.get('pocito_ses');
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
+  if (syncCfg().integrada && !LS.get('pocito_int')) { if (S.demo) S.dirty = {}; S.lastPull = null; LS.set('pocito_int', 1); }
   if (SES && SES.tipo === 'caseta' && !db.get('vigilantes', SES.vigilanteId)) SES = null;
   let spl = true; try { spl = !sessionStorage.getItem('pocito_spl'); sessionStorage.setItem('pocito_spl', '1'); } catch (e) { }
   if (spl) { const sp = document.createElement('div'); sp.className = 'splash'; sp.innerHTML = `<div class="lg">${LOGO_SVG}<b>el pocito</b></div>`; document.body.appendChild(sp); setTimeout(() => sp.remove(), 1900); }
