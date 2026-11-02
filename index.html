@@ -247,6 +247,9 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .link.sub{display:inline-flex;align-items:center;text-align:left;gap:.4rem;color:var(--muted);font-weight:500;font-size:.88rem;text-decoration:underline;text-underline-offset:3px}
 .link.sub:hover{color:var(--accent)}
 .heroX .acts button{max-width:84px;text-align:center;line-height:1.15}
+.dinero .dtot{font-size:1.4rem;font-variant-numeric:tabular-nums}
+.dsec{margin-top:1rem}.dsh{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:.45rem}
+.dsec .item{margin-bottom:.45rem}.dsec b.neg,.neg{color:var(--bad)}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -363,8 +366,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.6';
+const APP_VER = '2.7';
 const NOVEDADES = [
+  ['2.7', 'Dinero en caseta visible en el inicio del vigilante por concepto · Casas pueden dar dinero a la caseta para pagar gastos · Adelantos del administrador a caseta con catálogo de conceptos'],
   ['2.6', 'Inicio de casa simplificado · Pago de cuotas en efectivo a vigilante o administrador con doble confirmación · Saldo con pago en espera · Próximo pago y cuotas extraordinarias · Gasto del condominio con reembolso o a cuenta'],
   ['2.5', 'Conexión a la nube integrada: todos los dispositivos sincronizan solos · Aviso visible si un dispositivo no está conectado · Descarga completa de la nube en cada actualización'],
   ['2.4', 'Montos con formato $ al escribir · Teléfonos solo números · Traspasos con saldos y validación · Resumen de movimientos en el inicio · Respaldos automáticos al actualizar'],
@@ -903,9 +907,9 @@ function openQuick() {
   let o = [];
   if (isCaseta()) o = [{ l: 'Recibir dinero de una casa', ic: 'cash', fn: () => A.cobroCaseta() }, { l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
   else if (isCasa()) { const n = SES.casa; o = [{ l: 'Pagar mis cuotas', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Registrar una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }];
-    if (isAdmin()) o.push({ l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
+    if (isAdmin()) o.push({ l: 'Adelantar dinero a caseta (admin)', ic: 'cash', fn: () => A.adelantoCaseta() }, { l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
     o.push({ l: 'Emergencia', ic: 'sos', cls: 'danger', fn: () => A.emergencia(n) }); }
-  else o = [{ l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
+  else o = [{ l: 'Adelantar dinero a caseta', ic: 'cash', fn: () => A.adelantoCaseta() }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
   blurMenu('', o);
 }
 function heroHtml() {
@@ -973,6 +977,7 @@ V.inicio = () => {
   const cc = cuentaCasa(n), pAb = cc.pendAb;
   const misRes = sortBy(db.all('reservas').filter(r => r.casa == n && r.fecha >= today() && ['solicitada', 'aprobada'].includes(r.estado)), 'fecha', false);
   return `${paq.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Paquetes en caseta</h3><span class="tag warn">${paq.length}</span></div><div class="mt">${misPaquetesHtml(n)}</div></div>` : ''}${misRes.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Mis apartados</h3><button class="link" onclick="go('areas')">Ver todos</button></div><div class="list mt">${misRes.map(resItem).join('')}</div></div>` : ''}${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'aviso_vigilante' ? '<b>en la caseta</b>, falta que el vigilante confirme que lo recibió' : a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}
+  ${db.all('gastos').filter(g => g.casaPaga == n && g.viaCaseta && ['por_confirmar', 'en_caseta'].includes(g.casetaEstado)).map(g => `<div class="notice info">${ic('cash')} Diste <b>${money(g.monto)}</b> a la caseta (${esc(g.recibidoPor || '')}) para pagar <b>${esc(g.concepto)}</b>. Estatus: ${esc(GC_TXT[g.casetaEstado])}.</div>`).join('')}
   <div class="card hero saldoC ${cc.efectivo > 0.009 ? 'warn' : 'ok'}">
     <h3>Saldo de la Casa ${n}</h3>
     <div class="big">${money(Math.max(0, cc.efectivo))}</div>
@@ -1036,7 +1041,7 @@ function gastosTable(rows, admin) {
     { h: 'Fecha', f: g => fdate(g.fecha) },
     { h: 'Categoría', f: g => esc(g.categoria) },
     { h: 'Concepto', f: g => esc(g.concepto) + (g.proveedor ? `<div class="small muted">${esc(g.proveedor)}</div>` : '') },
-    { h: 'Pagado de', f: g => (g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + (g.reposicion === 'reembolso' ? ' (pide reembolso)' : ' (a cuenta de cuotas)') : esc(CUENTAS[g.cuenta] || g.cuenta)) + (g.reembolso === 'pagado' ? `<div class="small muted">Reembolsado a Casa ${g.casaPaga}</div>` : g.reembolso === 'pendiente' ? `<div><span class="tag warn">Reembolso pendiente</span></div>` : '') },
+    { h: 'Pagado de', f: g => (g.viaCaseta && g.cuenta === 'condomino' ? `<div><span class="tag ${g.casetaEstado === 'pagado' ? 'ok' : 'warn'}">Vía caseta: ${esc(GC_TXT[g.casetaEstado] || '')}</span></div>` : '') + (g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + (g.reposicion === 'reembolso' ? ' (pide reembolso)' : ' (a cuenta de cuotas)') : esc(CUENTAS[g.cuenta] || g.cuenta)) + (g.reembolso === 'pagado' ? `<div class="small muted">Reembolsado a Casa ${g.casaPaga}</div>` : g.reembolso === 'pendiente' ? `<div><span class="tag warn">Reembolso pendiente</span></div>` : '') },
     { h: 'Monto', num: 1, f: g => money(g.monto) },
     { h: 'Comprobante', f: g => fileBtn(g.comprobante) },
     ...(admin ? [{ h: '', f: g => `<span class="nowrap">${g.estado === 'pendiente' ? `<button class="btn sm primary" onclick="A.aprobarGasto('${g.id}')">Aprobar</button> <button class="btn sm" onclick="A.rechazarGasto('${g.id}')">Rechazar</button>` : `<button class="btn sm" onclick="A.gasto('${g.id}')">Editar</button> <button class="btn sm" onclick="A.borrarGasto('${g.id}')">Borrar</button>`}</span>` }] : [])
@@ -1096,7 +1101,7 @@ V.panel = () => {
   return `${venc ? `<div class="notice">El periodo ${perLabel(c.anio)} terminó el 31 de octubre. <button class="link" onclick="go('reportes')">Genera el acta y entrega a la siguiente casa</button>.</div>` : ''}<div class="sect"><h2>Panel de administración</h2><span class="muted">Periodo ${perLabel(c.anio)} · Administra: ${esc(casaLabel(c.casaAdmin))}</span></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}
     ${kpi('Por cobrar a casas', money(porCobrar), porCobrar > 0 ? 'warn' : '')}${kpi('Gastos del mes', money(gMes))}</div>
-  ${(() => { const n = db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length; return n ? `<div class="notice">${n} solicitud(es) para apartar palapa o estacionamiento. <button class="link" onclick="go('areas')">Autorizar</button></div>` : ''; })()}${(() => { const r = db.all('gastos').filter(g => g.reembolso === 'pendiente'); return r.length ? `<div class="notice">${r.length} reembolso(s) por pagar a condóminos: ${money(sum(r))}. <button class="link" onclick="go('gastos')">Ver</button></div>` : ''; })()}${efVig.length ? `<div class="notice info">Efectivo de casas en caseta sin confirmar: <b>${money(sum(efVig))}</b>${efVig.map(a => `<div class="small">Casa ${a.casa} · ${money(a.monto)} · lo tiene ${esc(a.recibidoPor || 'caseta')} · ${a.estado === 'aviso_vigilante' ? 'falta que el vigilante confirme' : a.estado === 'con_vigilante' ? 'falta que te lo entregue' : 'ya te lo entregó, confírmalo'}</div>`).join('')} <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
+  ${(() => { const n = db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length; return n ? `<div class="notice">${n} solicitud(es) para apartar palapa o estacionamiento. <button class="link" onclick="go('areas')">Autorizar</button></div>` : ''; })()}${(() => { const r = db.all('gastos').filter(g => g.reembolso === 'pendiente'); return r.length ? `<div class="notice">${r.length} reembolso(s) por pagar a condóminos: ${money(sum(r))}. <button class="link" onclick="go('gastos')">Ver</button></div>` : ''; })()}${(() => { const g = db.all('gastos').filter(x => x.viaCaseta && ['por_confirmar', 'en_caseta'].includes(x.casetaEstado)); const ad = db.all('transferencias').filter(t => t.a === 'vigilante' && t.porRecibir); return g.length || ad.length ? `<div class="notice info">${g.length ? `${money(sum(g))} de casas en caseta para pagar gastos (${g.map(x => esc(x.concepto)).join(', ')}). ` : ''}${ad.length ? `${ad.length} adelanto(s) a caseta sin confirmar.` : ''} <button class="link" onclick="go('cajas','vigilante')">Ver caseta</button></div>` : ''; })()}${efVig.length ? `<div class="notice info">Efectivo de casas en caseta sin confirmar: <b>${money(sum(efVig))}</b>${efVig.map(a => `<div class="small">Casa ${a.casa} · ${money(a.monto)} · lo tiene ${esc(a.recibidoPor || 'caseta')} · ${a.estado === 'aviso_vigilante' ? 'falta que el vigilante confirme' : a.estado === 'con_vigilante' ? 'falta que te lo entregue' : 'ya te lo entregó, confírmalo'}</div>`).join('')} <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
   <div class="grid2">
     <div class="card"><h3>Caseta hoy</h3><p>De turno: <b>${t ? esc(vigName(t.vigilanteId)) + '</b> desde ' + fdt(t.inicio) : 'Nadie ha iniciado turno</b>'}</p>
       ${aus.length ? aus.map(a => `<div class="small">${esc(vigName(a.vigilanteId))}: ${TIPOS_AUS[a.tipo]} · cubre <b>${esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || 'sin asignar')}</b></div>`).join('') : '<div class="small muted">Sin ausencias hoy</div>'}
@@ -1138,9 +1143,10 @@ V.gastos = () => {
 V.cajas = () => {
   const cur = UI.sub.cajas || 'chica';
   const mv = movimientos(cur).slice().reverse();
-  return `<div class="sect"><h2>Cajas</h2><div class="row"><button class="btn primary" onclick="A.transferencia()">Mover dinero entre cajas</button><button class="btn" onclick="A.transferencia('chica','vigilante')">Entregar dinero a caseta</button><button class="btn" onclick="A.ingreso()">Otro ingreso / saldo inicial</button></div></div>
+  return `<div class="sect"><h2>Cajas</h2><div class="row"><button class="btn primary" onclick="A.transferencia()">Mover dinero entre cajas</button><button class="btn" onclick="A.adelantoCaseta()">Adelantar dinero a caseta</button><button class="btn" onclick="A.ingreso()">Otro ingreso / saldo inicial</button></div></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => `<div class="card kpi" style="cursor:pointer;${k === cur ? 'outline:2px solid var(--brand-2)' : ''}" onclick="setSub('cajas','${k}')"><div class="lbl">${CUENTAS[k]}</div><div class="val">${money(saldoCuenta(k))}</div><div class="small muted">Ver movimientos</div></div>`).join('')}</div>
-  <h3>Movimientos · ${CUENTAS[cur]}</h3>
+  <div class="grid2"><div>${dineroCasetaHtml()}</div><div class="card"><div class="row sp"><h3 style="margin:0">Conceptos para caseta</h3><button class="btn sm" onclick="A.catalogoCaseta()">Editar catálogo</button></div><p class="small muted">Elige uno al adelantar dinero. La caseta lo paga al destino conforme se necesite.</p><div class="row" style="gap:.4rem">${conceptosCaseta().map(c => `<button class="tag" style="border:0;cursor:pointer" onclick="A.adelantoCaseta('${esc(c)}')">+ ${esc(c)}</button>`).join('')}</div></div></div>
+  <h3 class="mt">Movimientos · ${CUENTAS[cur]}</h3>
   ${cur === 'vigilante' ? '<p class="small muted">El fondo de caseta es el dinero que tienen los vigilantes para pagar la basura, el jardinero y gastos menores. Cada pago que registran aparece aquí con su comprobante.</p>' : ''}
   ${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) + (x.g && x.g.registradoPor ? `<div class="small muted">Registró: ${esc(x.g.registradoPor)}</div>` : '') }, { h: 'Entrada', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salida', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}
   <h3 class="mt">Transferencias e ingresos registrados</h3>
@@ -1328,7 +1334,8 @@ function feedCasa(n) {
     if (a.estado === 'confirmado' && (a.confirmadoEn || a.confirmadoPor)) add(a.confirmadoEn || a._u && new Date(a._u).toISOString(), 'shield', `El administrador confirmó la recepción de ${money(a.monto)}`, 'ok');
     if (a.estado === 'rechazado') add(a._u && new Date(a._u).toISOString(), 'alert', `Pago de ${money(a.monto)} rechazado`, 'bad'); });
   db.all('cargos').filter(c => c.casa == n).forEach(c => add(c.fecha, 'receipt', `Cargo: ${esc(c.concepto)} · ${money(c.monto)}`));
-  db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)}`, g.estado === 'pendiente' ? 'warn' : '');
+  db.all('gastos').filter(g => g.viaCaseta && g.casaPaga == n).forEach(g => { add(g.recibidoEn, 'cash', `Diste ${money(g.monto)} a ${esc(g.recibidoPor || 'la caseta')} para pagar ${esc(g.concepto)}`, g.casetaEstado === 'pagado' ? '' : 'warn'); if (g.vigConfirmadoEn) add(g.vigConfirmadoEn, 'cash', `${esc(g.recibidoPor || 'La caseta')} confirmó que tiene el dinero para ${esc(g.concepto)}`); if (g.casetaEstado === 'pagado') add(g.pagadoEn, 'receipt', `La caseta pagó ${esc(g.concepto)}${g.proveedor ? ' a ' + esc(g.proveedor) : ''}`, 'ok'); });
+  db.all('gastos').filter(g => (g.cuenta === 'condomino' || g.casaPaga) && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)}`, g.estado === 'pendiente' ? 'warn' : '');
     if (g.estado === 'aprobado') add(g.aprobadoEn || (g._u && new Date(g._u).toISOString()), 'shield', g.reposicion === 'reembolso' ? `Aprobado: te reembolsarán ${money(g.monto)}` : `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok');
     if (g.reembolso === 'pagado') add(g.reembolsadoEn, 'wallet', `Te reembolsaron ${money(g.monto)} (${esc(g.concepto)})`, 'ok'); });
   db.all('reservas').filter(r => r.casa == n).forEach(r => { add(r.creado, 'umbrella', `Apartado de ${AREAS[r.area].toLowerCase()} para el ${fdate(r.fecha)}`, r.estado === 'solicitada' ? 'warn' : '');
@@ -1385,7 +1392,8 @@ V.c_visitas = () => {
   const esper = sortBy(db.all('preregistros').filter(p => p.fecha === hoy && p.estado !== 'llegó'), 'casa', false);
   const frec = sortBy(db.all('frecuentes'), 'casa', false);
   const hoyV = sortBy(db.all('visitas').filter(v => String(v.entrada).slice(0, 10) === hoy), 'entrada');
-  return `<div class="row"><button class="btn primary lg" onclick="A.entrada()">+ Registrar entrada</button><button class="btn lg" onclick="A.paquete()">+ Recibir paquete</button><button class="btn lg" onclick="A.incidencia('caseta')">Reportar problema</button></div>
+  return `<div class="row mt"><button class="btn primary lg" onclick="A.entrada()">+ Registrar entrada</button><button class="btn lg" onclick="A.paquete()">+ Recibir paquete</button><button class="btn lg" onclick="A.incidencia('caseta')">Reportar problema</button></div>
+  <div class="mt">${dineroCasetaHtml()}</div>
   <div class="grid2 mt">
     <div class="card"><h3>Esperados hoy</h3>${esper.length ? `<div class="list">${esper.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} ${esc(p.nota || '')}</div></div><button class="btn primary" onclick="A.entrada(null,'${p.id}')">Llegó</button></div>`).join('')}</div>` : '<p class="muted">Nadie avisó visitas para hoy.</p>'}</div>
     <div class="card"><h3>Dentro del condominio</h3>${dentro.length ? `<div class="list">${dentro.map(v => `<div class="item"><div><div class="t">${esc(v.nombre)}</div><div class="small muted">Casa ${v.casa} · ${esc(v.tipo)} · entró ${ftime(v.entrada)} ${esc(v.placas || '')}</div></div><button class="btn primary" onclick="A.salida('${v.id}')">Salió</button></div>`).join('')}</div>` : '<p class="muted">No hay visitas dentro.</p>'}</div>
@@ -1403,7 +1411,7 @@ V.c_caja = () => {
   const porEnt = sum(db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'aviso_vigilante'));
   return `<div class="kpis">${kpi('Fondo de caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}${kpi('Cobros por entregar al admin', money(porEnt), porEnt > 0 ? 'warn' : '')}</div>
   <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Basura')">Pagar basura</button><button class="btn primary lg" onclick="A.pagoCaseta('Jardinería')">Pagar jardinero</button><button class="btn lg" onclick="A.pagoCaseta('Otros')">Otro pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
-  ${cobrosCasetaHtml()}
+  <div class="mt">${dineroCasetaHtml()}</div>
   ${serv.length ? `<div class="card mt"><h3>Pagos a cargo de caseta</h3>${serv.map(s => { const e = estadoServicio(s); return `<div class="row sp" style="margin:.35rem 0"><span><b>${esc(s.nombre)}</b> ${money(s.monto)} ${esc(s.frecuencia)}</span><span class="row"><span class="tag ${e.cls}">${e.txt}</span><button class="btn sm primary" onclick="A.pagoCaseta('${esc(s.categoria)}','${s.id}')">Pagar</button></span></div>`; }).join('')}</div>` : ''}
   <h3 class="mt">Movimientos del fondo</h3>${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) }, { h: 'Entró', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salió', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}`;
 };
@@ -1482,6 +1490,16 @@ function cuentaCasa(n) {
   const cubre = !deb.length && efectivo < 0 && cuota > 0 ? Math.floor((-efectivo + 0.001) / cuota) : 0;
   const prox0 = prox; if (cubre) prox = isoDate(new Date(+prox.slice(0, 4), +prox.slice(5, 7) - 1 + cubre, 1)).slice(0, 7);
   return { saldo: saldoCasa(n), pend: sum(pendAb), pendAb, deb, prox, prox0, cubre, cuota, efectivo };
+}
+const CONC_DEF = ['Limpieza de callejón', 'Desazolve de techo', 'Limpieza Pocito', 'Compra de materiales', 'Jardinería', 'Otros'];
+const conceptosCaseta = () => (cfg().conceptosCaseta && cfg().conceptosCaseta.length ? cfg().conceptosCaseta : CONC_DEF);
+const catDe = c => /jard/i.test(c) ? 'Jardinería' : /basura/i.test(c) ? 'Basura' : /limpi/i.test(c) ? 'Limpieza' : /desazolve|material|repar|manten/i.test(c) ? 'Mantenimiento' : /luz|cfe/i.test(c) ? 'CFE (luz)' : /agua/i.test(c) ? 'Agua' : 'Otros';
+function fondoConceptos() {
+  const tr = db.all('transferencias'), gs = gastosValidos().filter(g => g.cuenta === 'vigilante');
+  const names = [...new Set([...conceptosCaseta(), ...tr.filter(t => t.conceptoFondo).map(t => t.conceptoFondo), ...gs.filter(g => g.conceptoFondo).map(g => g.conceptoFondo)])];
+  const xs = names.map(c => { const asig = sum(tr.filter(t => t.a === 'vigilante' && t.conceptoFondo === c)) - sum(tr.filter(t => t.de === 'vigilante' && t.conceptoFondo === c)); const pag = sum(gs.filter(g => g.conceptoFondo === c)); return { c, asig, pag, disp: asig - pag }; }).filter(x => x.asig || x.pag);
+  const general = saldoCuenta('vigilante') - sum(xs, x => x.disp);
+  return { xs, general };
 }
 const vigOrden = () => sortBy(db.all('vigilantes').filter(v => v.activo !== false), 'nombre', false).sort((a, b) => (a.rol === 'reemplazo') - (b.rol === 'reemplazo'));
 A.pagoCasa = n => {
@@ -1606,11 +1624,14 @@ A.gastoCondomino = n => openForm('Pagué un gasto del condominio', [
   { name: 'categoria', label: 'Categoría', type: 'select', options: [['', 'Elige una'], ...CATS.filter(c => !/Mantenimiento|Vigilancia|Coberturas/.test(c)).map(c => [c, c])], required: true },
   { name: 'monto', label: 'Monto', type: 'number', required: true },
   { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
-  { name: 'proveedor', label: 'A quién se pagó' },
+  { name: 'comoPago', label: '¿Cómo se pagó?', type: 'select', options: [['directo', 'Yo le pagué directamente'], ['caseta', 'Le di el dinero a la caseta para que pague']], full: true },
+  { name: 'vigilanteId', label: '¿A qué vigilante se lo diste?', type: 'select', options: vigOrden().map(v => [v.id, v.nombre + (v.rol === 'reemplazo' ? ' (reemplazo)' : '')]), value: (turnoActivo() || {}).vigilanteId },
+  { name: 'proveedor', label: 'A quién se pagó / se pagará' },
   { name: 'reposicion', label: '¿Cómo quieres que se te reponga?', type: 'select', options: [['saldo', 'A cuenta de mis cuotas (se descuenta de mi saldo)'], ['reembolso', 'Reembolso (que me regresen el dinero)']], full: true },
   { name: 'comprobante', label: 'Ticket o foto', type: 'file', accept: 'image/*,application/pdf', full: true }
-], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('gastos', { ...v, cuenta: 'condomino', casaPaga: n, estado: 'pendiente', registradoPor: 'Casa ' + n }); },
-  { intro: '<p class="small muted">El administrador lo revisa. <b>A cuenta:</b> al aprobarlo se descuenta de tu saldo (si sobra, queda a favor). <b>Reembolso:</b> tu saldo no cambia y el administrador te regresa el dinero.</p>', toast: 'Enviado al administrador' });
+], v => { if (!(v.monto > 0)) return 'Escribe el monto'; const via = v.comoPago === 'caseta';
+  db.put('gastos', { ...v, cuenta: 'condomino', casaPaga: n, estado: 'pendiente', registradoPor: 'Casa ' + n, ...(via ? { viaCaseta: true, casetaEstado: 'por_confirmar', recibidoPor: vigName(v.vigilanteId), recibidoEn: new Date().toISOString() } : { vigilanteId: '' }) }); },
+  { onLive: f => { f.elements.vigilanteId.closest('.fld').style.display = f.elements.comoPago.value === 'caseta' ? '' : 'none'; }, intro: '<p class="small muted">El administrador lo revisa. <b>A cuenta:</b> al aprobarlo se descuenta de tu saldo (si sobra, queda a favor). <b>Reembolso:</b> tu saldo no cambia y el administrador te regresa el dinero.</p>', toast: 'Enviado al administrador' });
 A.aprobarGasto = id => { const g0 = db.get('gastos', id); const g = db.put('gastos', { ...g0, estado: 'aprobado', aprobadoPor: quien(), aprobadoEn: new Date().toISOString(), ...(g0.reposicion === 'reembolso' ? { reembolso: 'pendiente' } : {}) }); syncCompensacion(g); render(); toast(g.reposicion === 'reembolso' ? 'Aprobado · falta reembolsar a Casa ' + g.casaPaga : 'Aprobado y abonado a Casa ' + g.casaPaga); };
 A.reembolsar = id => { const g = db.get('gastos', id); openForm('Reembolsar a Casa ' + g.casaPaga + ' · ' + money(g.monto), [{ name: 'cuenta', label: '¿De dónde sale el dinero?', type: 'select', options: cuentaOpts(['chica', 'banco']) }, { name: 'fechaR', label: 'Fecha', type: 'date', value: today() }], v => { if (saldoCuenta(v.cuenta) < num(g.monto)) return CUENTAS[v.cuenta] + ' solo tiene ' + money(saldoCuenta(v.cuenta)); db.put('gastos', { ...g, cuenta: v.cuenta, reembolso: 'pagado', reembolsadoEn: v.fechaR, reembolsadoPor: quien() }); }, { ok: 'Reembolsar', toast: 'Reembolso registrado' }); };
 A.rechazarGasto = id => confirmar('¿Rechazar este gasto?', () => db.put('gastos', { ...db.get('gastos', id), estado: 'rechazado' }), 'Rechazar');
@@ -1764,22 +1785,69 @@ function misPaquetesHtml(n, todos) {
   return `<div class="list">${pend.map(p => `<div class="item"><div><div class="t">${ic('box')} ${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Llegó ${fdt(p.recibido)} · recibió ${esc(vigName(p.vigilanteId))}</div><div style="margin-top:.3rem"><span class="tag warn">En caseta</span></div></div><div class="row">${p.foto ? fileBtn(p.foto) : ''}<button class="btn sm primary" onclick="A.recibiPaquete('${p.id}')">Ya lo tengo</button></div></div>`).join('')}
     ${ent.map(p => `<div class="item"><div><div class="t">${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Entregado ${fdt(p.entregado)} a ${esc(p.entregadoA || '')} · ${esc(paqQuien(p))}</div></div><span class="tag ok">Entregado</span></div>`).join('')}</div>`;
 }
-A.pagoCaseta = (cat, servId, desdeAdmin) => {
+A.pagoCaseta = (cat, servId, desdeAdmin, concF) => {
   const s = servId ? db.get('servicios', servId) : null;
+  const fc = fondoConceptos(), cOpts = fc.xs.filter(x => x.disp > 0.009);
   const catOk = CATS.includes(cat) ? cat : (cat === 'Basura' ? 'Basura' : cat === 'Jardinería' ? 'Jardinería' : 'Otros');
-  openForm('Pago con el fondo de caseta · ' + catOk, [
-    { name: 'concepto', label: 'Concepto', value: s ? s.nombre : catOk === 'Basura' ? 'Recolección de basura' : catOk === 'Jardinería' ? 'Pago a jardinero' : '', required: true, full: true },
+  openForm('Pago con el fondo de caseta', [
+    ...(cOpts.length ? [{ name: 'conceptoFondo', label: '¿De qué dinero sale?', type: 'select', options: [...cOpts.map(x => [x.c, x.c + ' · disponible ' + money(x.disp)]), ['', 'Fondo general · ' + money(fc.general)]], value: concF || '', full: true }] : []),
+    { name: 'concepto', label: 'Concepto', value: concF ? concF :  s ? s.nombre : catOk === 'Basura' ? 'Recolección de basura' : catOk === 'Jardinería' ? 'Pago a jardinero' : '', required: true, full: true },
     { name: 'monto', label: 'Monto', type: 'number', value: s ? s.monto : '', required: true },
     { name: 'proveedor', label: '¿A quién se le pagó?', value: s ? s.proveedor : '' },
     { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
     { name: 'comprobante', label: 'Foto del recibo o ticket', type: 'file', full: true }
   ], v => {
     if (!(v.monto > 0)) return 'Escribe el monto';
-    db.put('gastos', { ...v, categoria: catOk, cuenta: 'vigilante', estado: 'aprobado', servicioId: servId || '', registradoPor: quien() });
+    const cF = v.conceptoFondo || ''; const x = cF ? cOpts.find(o => o.c === cF) : null;
+    if (x && v.monto > x.disp + 0.001) return 'Para ' + cF + ' solo hay ' + money(x.disp);
+    db.put('gastos', { ...v, conceptoFondo: cF, categoria: cF ? catDe(cF) : catOk, cuenta: 'vigilante', estado: 'aprobado', servicioId: servId || '', registradoPor: quien() });
     const resto = saldoCuenta('vigilante');
     if (resto < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
   }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b></p>`, toast: 'Pago registrado' });
 };
+A.adelantoCaseta = (conc) => {
+  const cs = conceptosCaseta();
+  openForm('Adelantar dinero a caseta', [
+    { name: 'conceptoFondo', label: 'Concepto', type: 'select', options: [...cs.map(c => [c, c]), ['', 'Fondo general (basura, jardinero, menores)']], value: conc ?? cs[0] },
+    { name: 'monto', label: 'Monto', type: 'number', required: true },
+    { name: 'de', label: 'Sale de', type: 'select', options: cuentaOpts(['chica', 'banco']).map(([k, l]) => [k, l + ' · ' + money(saldoCuenta(k))]) },
+    { name: 'destino', label: '¿A quién se le pagará?', placeholder: 'Ej. Don Pepe (desazolve)' },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'nota', label: 'Indicaciones para el vigilante', full: true, placeholder: 'Ej. pagar cuando termine el trabajo, pedir recibo' }
+  ], v => { if (!(v.monto > 0)) return 'Escribe el monto'; if (v.monto > saldoCuenta(v.de) + 0.001) return CUENTAS[v.de] + ' solo tiene ' + money(saldoCuenta(v.de));
+    db.put('transferencias', { de: v.de, a: 'vigilante', monto: v.monto, fecha: v.fecha, conceptoFondo: v.conceptoFondo, destino: v.destino, nota: (v.conceptoFondo || 'Fondo general') + (v.destino ? ' · para ' + v.destino : '') + (v.nota ? ' · ' + v.nota : ''), indicaciones: v.nota, porRecibir: true, registradoPor: quien() });
+  }, { ok: 'Adelantar', toast: 'Adelanto registrado. La caseta lo verá en su inicio',
+    intro: '<p class="small muted">El vigilante de turno recibe el dinero y lo va pagando al destino conforme se necesite. Cada pago queda con su comprobante.</p>',
+    validate: v => v.monto != null && v.monto > saldoCuenta(v.de) + 0.001 ? CUENTAS[v.de] + ' solo tiene ' + money(saldoCuenta(v.de)) : '' });
+};
+A.recibiAdelanto = id => { const t = db.get('transferencias', id); confirmar(`¿Recibiste ${money(t.monto)} para ${t.conceptoFondo || 'el fondo general'}?`, () => { db.put('transferencias', { ...t, porRecibir: false, recibidoPor: quien(), recibidoEn: new Date().toISOString() }); toast('Confirmado'); }, 'Sí, lo recibí'); };
+A.catalogoCaseta = () => openForm('Catálogo de conceptos para caseta', [{ name: 'lista', label: 'Un concepto por renglón', type: 'textarea', value: conceptosCaseta().join('\n'), full: true }], v => { const l = v.lista.split('\n').map(x => x.trim()).filter(Boolean); if (!l.length) return 'Escribe al menos uno'; setCfg({ conceptosCaseta: l }); }, { toast: 'Catálogo actualizado' });
+/* ---- Casa paga gasto a través de caseta ---- */
+A.gcRecibi = id => { const g = db.get('gastos', id); confirmar(`¿Recibiste ${money(g.monto)} de Casa ${g.casaPaga} para pagar "${g.concepto}"?`, () => { db.put('gastos', { ...g, casetaEstado: 'en_caseta', vigConfirmadoPor: quien(), vigConfirmadoEn: new Date().toISOString() }); toast('Confirmado. Págalo cuando toque'); }, 'Sí, lo recibí'); };
+A.gcNoRecibi = id => { const g = db.get('gastos', id); openForm('No recibí este dinero', [{ name: 'motivo', label: '¿Qué pasó?', required: true, full: true }], v => { db.put('gastos', { ...g, casetaEstado: 'no_recibido', estado: 'rechazado', notaCaseta: v.motivo }); }, { ok: 'Avisar', toast: 'Avisado a la casa y al administrador' }); };
+A.gcPagar = id => { const g = db.get('gastos', id); openForm('Pagar "' + g.concepto + '" · ' + money(g.monto), [
+  { name: 'proveedor', label: '¿A quién se le pagó?', value: g.proveedor || '', required: true },
+  { name: 'fechaPago', label: 'Fecha', type: 'date', value: today() },
+  { name: 'comprobantePago', label: 'Foto del recibo', type: 'file', full: true }
+], v => { db.put('gastos', { ...g, proveedor: v.proveedor, casetaEstado: 'pagado', pagadoPor: quien(), pagadoEn: v.fechaPago, comprobante: v.comprobantePago || g.comprobante }); }, { ok: 'Pagado', toast: 'Pago registrado. La casa y el administrador ya lo ven' }); };
+const GC_TXT = { por_confirmar: 'falta que el vigilante confirme que lo recibió', en_caseta: 'en la caseta, falta pagarlo', pagado: 'pagado por la caseta', no_recibido: 'la caseta dice que no lo recibió' };
+function dineroCasetaHtml() {
+  const cob = sortBy(db.all('abonos').filter(a => EN_CASETA.includes(a.estado)), 'recibidoEn');
+  const cobEn = cob.filter(a => a.estado !== 'entregado_admin');
+  const gc = sortBy(db.all('gastos').filter(g => g.viaCaseta && ['por_confirmar', 'en_caseta'].includes(g.casetaEstado)), 'creado');
+  const ad = db.all('transferencias').filter(t => t.a === 'vigilante' && t.porRecibir);
+  const fc = fondoConceptos();
+  const total = saldoCuenta('vigilante') + sum(cobEn) + sum(gc);
+  const sec = (t, body) => `<div class="dsec"><div class="dsh">${t}</div>${body}</div>`;
+  return `<div class="card dinero"><div class="row sp"><h3 style="margin:0">${ic('cash')} Dinero en caseta</h3><b class="dtot">${money(total)}</b></div>
+    ${ad.length ? sec('Adelantos del administrador por confirmar', ad.map(t => `<div class="item"><div><div class="t">${money(t.monto)} · ${esc(t.conceptoFondo || 'Fondo general')}</div><div class="small muted">${t.destino ? 'Para ' + esc(t.destino) + ' · ' : ''}${esc(t.indicaciones || '')} ${fdate(t.fecha)}</div></div><button class="btn sm primary" onclick="A.recibiAdelanto('${t.id}')">Sí lo recibí</button></div>`).join('')) : ''}
+    ${sec(`Fondo de caseta · ${money(saldoCuenta('vigilante'))}`, `${fc.xs.filter(x => Math.abs(x.disp) > 0.009).map(x => `<div class="item"><div><div class="t">${esc(x.c)}</div><div class="small muted">Adelantado ${money(x.asig)} · pagado ${money(x.pag)}</div></div><div class="row"><b class="${x.disp < 0 ? 'neg' : ''}">${money(x.disp)}</b>${isCaseta() && x.disp > 0 ? `<button class="btn sm primary" onclick="A.pagoCaseta('${esc(catDe(x.c))}',null,false,'${esc(x.c)}')">Pagar</button>` : ''}</div></div>`).join('')}
+      <div class="item"><div><div class="t">General</div><div class="small muted">Basura, jardinero y gastos menores</div></div><div class="row"><b class="${fc.general < 0 ? 'neg' : ''}">${money(fc.general)}</b>${isCaseta() ? `<button class="btn sm" onclick="A.pagoCaseta('Otros')">Pagar</button>` : ''}</div></div>`)}
+    ${sec(`Cuotas de casas · entregar al administrador · ${money(sum(cobEn))}`, cob.length ? cob.map(a => `<div class="item"><div><div class="t">Casa ${a.casa} · ${money(a.monto)}</div><div class="small muted">${esc(a.concepto || '')} · ${a.estado === 'aviso_vigilante' ? 'la casa dice que se lo dio a' : 'recibió'} ${esc(a.recibidoPor || '')} · ${fdt(a.recibidoEn || a.fecha)}</div><div style="margin-top:.3rem">${tagEstado(a.estado)}</div></div>${isCaseta() ? (a.estado === 'aviso_vigilante' ? `<div class="row"><button class="btn sm primary" onclick="A.vigConfirma('${a.id}')">Sí lo recibí</button><button class="btn sm" onclick="A.vigNiega('${a.id}')">No</button></div>` : a.estado === 'con_vigilante' ? `<button class="btn sm" onclick="A.entregarCobro('${a.id}')">Ya lo entregué</button>` : '') : ''}</div>`).join('') + (isCaseta() && cob.some(a => a.estado === 'con_vigilante') ? `<div class="row mt"><button class="btn primary" onclick="A.entregarCobros()">Entregar todo al administrador</button></div>` : '') : '<p class="small muted">No hay cuotas de casas en caseta.</p>')}
+    ${gc.length ? sec(`Dinero de casas para pagar gastos · ${money(sum(gc))}`, gc.map(g => `<div class="item"><div><div class="t">Casa ${g.casaPaga} · ${money(g.monto)} · ${esc(g.concepto)}</div><div class="small muted">${g.proveedor ? 'Para ' + esc(g.proveedor) + ' · ' : ''}${esc(GC_TXT[g.casetaEstado])} · ${esc(g.recibidoPor || '')}</div></div>${isCaseta() ? (g.casetaEstado === 'por_confirmar' ? `<div class="row"><button class="btn sm primary" onclick="A.gcRecibi('${g.id}')">Sí lo recibí</button><button class="btn sm" onclick="A.gcNoRecibi('${g.id}')">No</button></div>` : `<button class="btn sm primary" onclick="A.gcPagar('${g.id}')">Pagar</button>`) : ''}</div>`).join('')) : ''}
+    ${isCaseta() ? `<div class="row mt"><button class="btn" onclick="A.cobroCaseta()">${ic('cash')} Recibir dinero de una casa</button></div>` : ''}
+  </div>`;
+}
 A.salirCaseta = () => confirmar('¿Salir al menú principal? Tu turno sigue abierto; para cerrarlo usa "Entregar turno".', () => logout(), 'Salir');
 A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
   { name: 'casa', label: 'Casa', type: 'select', options: casaOpts('Elige la casa'), value: casa || '', required: true },
@@ -1808,7 +1876,7 @@ function cobrosCasetaHtml() {
       ${cv.length ? `<div class="row sp mt"><span>Por entregar: <b>${money(sum(cv))}</b></span><button class="btn primary" onclick="A.entregarCobros()">Entregar todo al administrador</button></div>` : '<p class="small muted mt">Todo entregado. Falta que el administrador confirme.</p>'}`
       : '<p class="muted small mt">No hay dinero de casas en caseta.</p>'}</div>`;
 }
-A.entregarTurno = () => openForm('Entregar turno', [{ type: 'html', html: (() => { const x = db.all('abonos').filter(a => a.estado === 'con_vigilante'); return x.length ? `<div class="notice fld full">Hay ${money(sum(x))} de cobros a casas sin entregar al administrador. Déjalo anotado.</div>` : ''; })() }, { name: 'notas', label: 'Notas para el siguiente turno', type: 'textarea', placeholder: 'Novedades, paquetes pendientes, dinero en caja…' }], v => {
+A.entregarTurno = () => openForm('Entregar turno', [{ type: 'html', html: (() => { const x = db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'aviso_vigilante'); const g = db.all('gastos').filter(y => y.viaCaseta && ['por_confirmar', 'en_caseta'].includes(y.casetaEstado)); return x.length || g.length ? `<div class="notice fld full">Dinero que queda en caseta: ${x.length ? money(sum(x)) + ' de cuotas sin entregar al administrador' : ''}${x.length && g.length ? ' · ' : ''}${g.length ? money(sum(g)) + ' de casas para pagar gastos' : ''}. Déjalo anotado.</div>` : ''; })() }, { name: 'notas', label: 'Notas para el siguiente turno', type: 'textarea', placeholder: 'Novedades, paquetes pendientes, dinero en caja…' }], v => {
   const t = db.get('turnos', SES.turnoId); if (t) db.put('turnos', { ...t, fin: new Date().toISOString(), notasEntrega: v.notas });
   setTimeout(logout, 0);
 }, { ok: 'Entregar y salir', toast: 'Turno entregado' });
