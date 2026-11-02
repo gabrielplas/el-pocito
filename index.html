@@ -369,7 +369,7 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.0';
+const APP_VER = '3.0.1';
 const NOVEDADES = [
   ['3.0', 'Inicio de sesión validado en el servidor (PIN protegido, bloqueo tras 5 intentos) · PIN guardados en la nube · Notificaciones push en celulares'],
   ['2.9', 'Avisos fijos en el saldo de la casa para gastos a cuenta y reembolsos en espera · Nota libre en gastos pagados por la casa · Motivo de rechazo visible para la casa'],
@@ -979,6 +979,10 @@ async function activarAvisos() {
     LS.set('pocito_push', { endpoint: j.endpoint, perfil: perfilKey() }); logEv('Activó avisos', dispositivo()); render(); toast('Listo: este dispositivo recibirá avisos');
   } catch (e) { toast('No se pudieron activar: ' + e.message); }
 }
+async function probarAviso() {
+  try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('El Pocito · prueba', { body: 'Si ves esto, este dispositivo sí muestra avisos.', icon: 'icon-192.png', tag: 'prueba' }); toast('Prueba enviada. Si no apareció, revisa los permisos de notificaciones del sistema.'); }
+  catch (e) { toast('No se pudo mostrar: ' + e.message); }
+}
 async function quitarSuscripcion() {
   const p = LS.get('pocito_push'); if (!p || !syncCfg().url) return; LS.del('pocito_push');
   try { const c = syncCfg(), tok = await authToken(); if (tok) await fetch(c.url + '/rest/v1/push_subs?endpoint=eq.' + encodeURIComponent(p.endpoint), { method: 'DELETE', headers: { apikey: c.key, Authorization: 'Bearer ' + tok } }); } catch (e) { }
@@ -1412,7 +1416,7 @@ V.sistema = () => {
   <div class="card mt"><h3>Seguridad y avisos</h3>
     <p class="small">${!sc.url ? 'Conecta la nube para activar el inicio de sesión seguro y las notificaciones.' : seguro() ? '<span class="tag ok">Inicio de sesión seguro activo</span> Los PIN se validan en el servidor; tras 5 intentos fallidos el acceso se bloquea 10 minutos.' : '<span class="tag warn">Aún no activo</span> Sigue la guía PASOS.md de la carpeta supabase y vuelve a entrar con tu PIN.'}</p>
     ${seguro() ? `<p class="small muted">PIN que siguen guardados en dispositivos: <b>${db.all('casas').filter(c => c.pin).length + db.all('vigilantes').filter(v => v.pin).length + (cfg().pinSistema ? 1 : 0)}</b></p><div class="row"><button class="btn primary" onclick="A.migrarPins()">Pasar los PIN a la nube</button></div>` : ''}
-    <p class="small mt">Avisos en este dispositivo: <b>${pushEstado()}</b></p></div>
+    <p class="small mt">Avisos en este dispositivo: <b>${pushEstado()}</b></p>${pushOk() && Notification.permission === 'granted' ? '<div class="row"><button class="btn sm" onclick="probarAviso()">Probar aviso en este dispositivo</button></div>' : ''}</div>
   <div class="card mt"><div class="row sp"><h3 style="margin:0">Respaldos automáticos</h3><button class="btn sm" onclick="A.respaldoAhora()">Respaldar ahora</button></div>
     <p class="small muted">Se guarda uno diario y otro antes de cada actualización (últimos 10, en este dispositivo). Las actualizaciones nunca borran datos; si algo faltara, aquí se recupera.</p>
     <div class="list mt" id="bklist">${BK_LIST.length ? BK_LIST.map(b => `<div class="item"><div><div class="t">${esc(b.motivo)}</div><div class="small muted">${fdt(b.fecha)} · ${b.n} registros</div></div><button class="btn sm" onclick="A.restaurarAuto('${b.key}')">Recuperar</button></div>`).join('') : '<p class="muted small">Aún no hay respaldos</p>'}</div></div>
