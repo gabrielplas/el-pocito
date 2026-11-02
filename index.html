@@ -241,6 +241,7 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .saldoC h3{font-size:1.08rem;font-weight:700;margin-bottom:.2rem}
 .saldoC .estado{font-size:.95rem}
 .espera{display:flex;gap:.6rem;align-items:flex-start;background:var(--warn-soft);border:1px solid rgba(244,200,112,.35);color:var(--warn-ink);border-radius:16px;padding:.75rem .85rem;margin-top:.75rem;animation:pulse2 2.4s ease-in-out infinite}
+.espera.bad{background:var(--bad-soft);border-color:rgba(255,125,110,.35);color:var(--ink);animation:none}.espera.bad svg{color:var(--bad)}
 .espera svg{width:20px;height:20px;flex:none;margin-top:2px;color:var(--warn)}
 @keyframes pulse2{50%{border-color:rgba(244,200,112,.75)}}
 .toca{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line-2);display:flex;flex-direction:column;gap:.35rem;font-size:.93rem}
@@ -366,8 +367,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.8';
+const APP_VER = '2.9';
 const NOVEDADES = [
+  ['2.9', 'Avisos fijos en el saldo de la casa para gastos a cuenta y reembolsos en espera · Nota libre en gastos pagados por la casa · Motivo de rechazo visible para la casa'],
   ['2.8', 'Aviso de pago duplicado entre casa y caseta · Catálogo de pagos de caseta con atajos · Pagos programados (semanal, cada 2 semanas, mensual o única vez) que la caseta ve y actualiza'],
   ['2.7', 'Dinero en caseta visible en el inicio del vigilante por concepto · Casas pueden dar dinero a la caseta para pagar gastos · Adelantos del administrador a caseta con catálogo de conceptos'],
   ['2.6', 'Inicio de casa simplificado · Pago de cuotas en efectivo a vigilante o administrador con doble confirmación · Saldo con pago en espera · Próximo pago y cuotas extraordinarias · Gasto del condominio con reembolso o a cuenta'],
@@ -984,6 +986,12 @@ V.inicio = () => {
     <div class="big">${money(Math.max(0, cc.efectivo))}</div>
     <div class="estado">${cc.efectivo > 0.009 ? 'Por pagar' : cc.saldo < -0.009 && !cc.pend ? 'Saldo a favor ' + money(-cc.saldo) : 'Al corriente'}${cc.pend ? ' · <b>pago en espera de confirmación</b>' : ''}</div>
     ${pAb.map(a => `<div class="espera">${ic('clock')}<div><b>${money(a.monto)} en espera de confirmación</b><div class="small">${esc(a.concepto || a.nota || '')} · ${a.estado === 'aviso_vigilante' ? `está en la caseta, lo recibió <b>${esc(a.recibidoPor)}</b> (falta que lo confirme)` : a.estado === 'con_vigilante' ? `está en la caseta con <b>${esc(a.recibidoPor)}</b>, falta que lo entregue al administrador` : a.estado === 'entregado_admin' ? `ya lo tiene el administrador, falta que lo confirme` : a.recibidoPor === 'Administrador' ? 'lo tiene el administrador, falta que lo confirme' : 'falta que el administrador lo vea en la cuenta'}</div></div></div>`).join('')}
+    ${(() => { const gs = db.all('gastos').filter(g => g.casaPaga == n && g.cuenta === 'condomino' || g.casaPaga == n && g.reembolso === 'pendiente');
+      const pend = gs.filter(g => g.estado === 'pendiente'), reem = gs.filter(g => g.estado === 'aprobado' && g.reembolso === 'pendiente');
+      const rech = db.all('gastos').filter(g => g.casaPaga == n && g.estado === 'rechazado' && (g.rechazadoEn || (g._u ? new Date(g._u).toISOString() : '')) >= addDays(today(), -30));
+      return pend.map(g => `<div class="espera">${ic(g.reposicion === 'reembolso' ? 'wallet' : 'receipt')}<div><b>${g.reposicion === 'reembolso' ? 'Reembolso de ' + money(g.monto) + ' en espera' : money(g.monto) + ' a cuenta de tu saldo · en espera'}</b><div class="small">${esc(g.concepto)} · ${g.reposicion === 'reembolso' ? 'falta que el administrador lo apruebe y te reembolse' : 'falta que el administrador lo apruebe; al aprobarlo se descuenta de tu saldo'}${g.viaCaseta ? ' · ' + esc(GC_TXT[g.casetaEstado] || '') : ''}</div></div></div>`).join('')
+        + reem.map(g => `<div class="espera">${ic('wallet')}<div><b>Reembolso de ${money(g.monto)} aprobado</b><div class="small">${esc(g.concepto)} · falta que el administrador te regrese el dinero</div></div></div>`).join('')
+        + rech.map(g => `<div class="espera bad">${ic('alert')}<div><b>Rechazado: ${esc(g.concepto)} · ${money(g.monto)}</b><div class="small">Motivo: ${esc(g.motivoRechazo || (g.notaCaseta ? 'la caseta dice: ' + g.notaCaseta : 'sin motivo'))}</div></div></div>`).join(''); })()}
     <div class="toca">${cc.deb.length ? cc.deb.map(d => `<div class="row sp"><span>${d.tipo === 'especial' ? '<span class="tag brand">Extraordinaria</span> ' : ''}${esc(d.concepto)}</span><b>${money(d.resta)}</b></div>`).join('') : `${cc.cubre && cc.pend ? `<div class="row sp"><span class="muted">Cuota de ${mesLabel(cc.prox0)}${cc.cubre > 1 ? ' y siguientes' : ''}</span><span class="tag warn">Pagada · en espera</span></div>` : cc.cubre ? `<div class="small muted">Tu saldo a favor cubre ${cc.cubre === 1 ? 'la cuota de ' + mesLabel(cc.prox0) : cc.cubre + ' cuotas desde ' + mesLabel(cc.prox0)}</div>` : ''}<div class="row sp"><span class="muted">Próximo pago · Cuota de ${mesLabel(cc.prox)}</span><b>${money(cc.cuota)}</b></div>`}</div>
     <div class="row mt"><button class="btn primary" onclick="A.pagoCasa(${n})">${ic('wallet')} Pagar mis cuotas</button><button class="btn" onclick="go('micuenta')">Estado de cuenta</button></div>
     <button class="link sub mt" onclick="A.gastoCondomino(${n})">${ic('receipt')} ¿Pagaste algo del condominio de tu bolsa? Regístralo aquí</button>
@@ -1001,7 +1009,7 @@ V.micuenta = () => {
   <div class="kpis">${kpi(s > 0 ? 'Por pagar' : 'Saldo a favor', money(Math.abs(s)), s > 0.009 ? 'warn' : '')}${kpi('Cuota mensual', money(r.cuota != null && r.cuota !== '' ? r.cuota : cfg().cuota))}</div>
   ${estadoCuentaTable(n)}
   <h3 class="mt">Gastos que pagué por el condominio</h3>
-  ${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Concepto', f: g => esc(g.categoria + ' – ' + g.concepto) }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: 'Estado', f: g => tagEstado(g.estado || 'aprobado') + (g.reposicion === 'reembolso' ? `<div class="small muted">${g.reembolso === 'pagado' ? 'Reembolsado' : 'Reembolso'}</div>` : '<div class="small muted">A cuenta de cuotas</div>') }, { h: '', f: g => fileBtn(g.comprobante) }],
+  ${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Concepto', f: g => esc(g.categoria + ' – ' + g.concepto) }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: 'Estado', f: g => tagEstado(g.estado || 'aprobado') + (g.estado === 'rechazado' && g.motivoRechazo ? `<div class="small" style="color:var(--bad)">${esc(g.motivoRechazo)}</div>` : '') + (g.reposicion === 'reembolso' ? `<div class="small muted">${g.reembolso === 'pagado' ? 'Reembolsado' : 'Reembolso'}</div>` : '<div class="small muted">A cuenta de cuotas</div>') }, { h: '', f: g => fileBtn(g.comprobante) }],
     sortBy(db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n), 'fecha'), null, 'Ninguno')}`;
 };
 V.visitas = () => {
@@ -1041,7 +1049,7 @@ function gastosTable(rows, admin) {
   return table([
     { h: 'Fecha', f: g => fdate(g.fecha) },
     { h: 'Categoría', f: g => esc(g.categoria) },
-    { h: 'Concepto', f: g => esc(g.concepto) + (g.proveedor ? `<div class="small muted">${esc(g.proveedor)}</div>` : '') },
+    { h: 'Concepto', f: g => esc(g.concepto) + (g.proveedor ? `<div class="small muted">${esc(g.proveedor)}</div>` : '') + (g.detalle ? `<div class="small" style="margin-top:.2rem;white-space:pre-wrap"><b>Nota:</b> ${esc(g.detalle)}</div>` : '') + (g.estado === 'rechazado' && g.motivoRechazo ? `<div class="small" style="color:var(--bad)">Rechazado: ${esc(g.motivoRechazo)}</div>` : '') },
     { h: 'Pagado de', f: g => (g.viaCaseta && g.cuenta === 'condomino' ? `<div><span class="tag ${g.casetaEstado === 'pagado' ? 'ok' : 'warn'}">Vía caseta: ${esc(GC_TXT[g.casetaEstado] || '')}</span></div>` : '') + (g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + (g.reposicion === 'reembolso' ? ' (pide reembolso)' : ' (a cuenta de cuotas)') : esc(CUENTAS[g.cuenta] || g.cuenta)) + (g.reembolso === 'pagado' ? `<div class="small muted">Reembolsado a Casa ${g.casaPaga}</div>` : g.reembolso === 'pendiente' ? `<div><span class="tag warn">Reembolso pendiente</span></div>` : '') },
     { h: 'Monto', num: 1, f: g => money(g.monto) },
     { h: 'Comprobante', f: g => fileBtn(g.comprobante) },
@@ -1338,8 +1346,9 @@ function feedCasa(n) {
     if (a.estado === 'rechazado') add(a._u && new Date(a._u).toISOString(), 'alert', `Pago de ${money(a.monto)} rechazado`, 'bad'); });
   db.all('cargos').filter(c => c.casa == n).forEach(c => add(c.fecha, 'receipt', `Cargo: ${esc(c.concepto)} · ${money(c.monto)}`));
   db.all('gastos').filter(g => g.viaCaseta && g.casaPaga == n).forEach(g => { add(g.recibidoEn, 'cash', `Diste ${money(g.monto)} a ${esc(g.recibidoPor || 'la caseta')} para pagar ${esc(g.concepto)}`, g.casetaEstado === 'pagado' ? '' : 'warn'); if (g.vigConfirmadoEn) add(g.vigConfirmadoEn, 'cash', `${esc(g.recibidoPor || 'La caseta')} confirmó que tiene el dinero para ${esc(g.concepto)}`); if (g.casetaEstado === 'pagado') add(g.pagadoEn, 'receipt', `La caseta pagó ${esc(g.concepto)}${g.proveedor ? ' a ' + esc(g.proveedor) : ''}`, 'ok'); });
-  db.all('gastos').filter(g => (g.cuenta === 'condomino' || g.casaPaga) && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)}`, g.estado === 'pendiente' ? 'warn' : '');
-    if (g.estado === 'aprobado') add(g.aprobadoEn || (g._u && new Date(g._u).toISOString()), 'shield', g.reposicion === 'reembolso' ? `Aprobado: te reembolsarán ${money(g.monto)}` : `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok');
+  db.all('gastos').filter(g => (g.cuenta === 'condomino' || g.casaPaga) && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)} · ${g.reposicion === 'reembolso' ? 'pides reembolso' : 'a cuenta de tu saldo'}${g.estado === 'pendiente' ? (g.reposicion === 'reembolso' ? ' · en espera de aprobación y reembolso del administrador' : ' · en espera de aprobación del administrador') : ''}`, g.estado === 'pendiente' ? 'warn' : '');
+    if (g.estado === 'rechazado') add(g.rechazadoEn || (g._u && new Date(g._u).toISOString()), 'alert', `El administrador rechazó "${esc(g.concepto)}"${g.motivoRechazo ? ': ' + esc(g.motivoRechazo) : ''}`, 'bad');
+    if (g.estado === 'aprobado') add(g.aprobadoEn || (g._u && new Date(g._u).toISOString()), 'shield', g.reposicion === 'reembolso' ? `Aprobado: te reembolsarán ${money(g.monto)} · en espera del reembolso` : `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok');
     if (g.reembolso === 'pagado') add(g.reembolsadoEn, 'wallet', `Te reembolsaron ${money(g.monto)} (${esc(g.concepto)})`, 'ok'); });
   db.all('reservas').filter(r => r.casa == n).forEach(r => { add(r.creado, 'umbrella', `Apartado de ${AREAS[r.area].toLowerCase()} para el ${fdate(r.fecha)}`, r.estado === 'solicitada' ? 'warn' : '');
     if (r.estado === 'aprobada' && r.autorizadoEn) add(r.autorizadoEn, 'umbrella', `Autorizaron tu apartado de ${AREAS[r.area].toLowerCase()} (${fdate(r.fecha)})`, 'ok');
@@ -1645,6 +1654,7 @@ A.gastoCondomino = n => openForm('Pagué un gasto del condominio', [
   { name: 'comoPago', label: '¿Cómo se pagó?', type: 'select', options: [['directo', 'Yo le pagué directamente'], ['caseta', 'Le di el dinero a la caseta para que pague']], full: true },
   { name: 'vigilanteId', label: '¿A qué vigilante se lo diste?', type: 'select', options: vigOrden().map(v => [v.id, v.nombre + (v.rol === 'reemplazo' ? ' (reemplazo)' : '')]), value: (turnoActivo() || {}).vigilanteId },
   { name: 'proveedor', label: 'A quién se pagó / se pagará' },
+  { name: 'detalle', label: 'Nota para el administrador (opcional)', type: 'textarea', full: true, placeholder: 'Detalles: por qué se compró, dónde se usó, cotizaciones, etc.' },
   { name: 'reposicion', label: '¿Cómo quieres que se te reponga?', type: 'select', options: [['saldo', 'A cuenta de mis cuotas (se descuenta de mi saldo)'], ['reembolso', 'Reembolso (que me regresen el dinero)']], full: true },
   { name: 'comprobante', label: 'Ticket o foto', type: 'file', accept: 'image/*,application/pdf', full: true }
 ], v => { if (!(v.monto > 0)) return 'Escribe el monto'; const via = v.comoPago === 'caseta';
@@ -1652,7 +1662,7 @@ A.gastoCondomino = n => openForm('Pagué un gasto del condominio', [
   { onLive: f => { f.elements.vigilanteId.closest('.fld').style.display = f.elements.comoPago.value === 'caseta' ? '' : 'none'; }, intro: '<p class="small muted">El administrador lo revisa. <b>A cuenta:</b> al aprobarlo se descuenta de tu saldo (si sobra, queda a favor). <b>Reembolso:</b> tu saldo no cambia y el administrador te regresa el dinero.</p>', toast: 'Enviado al administrador' });
 A.aprobarGasto = id => { const g0 = db.get('gastos', id); const g = db.put('gastos', { ...g0, estado: 'aprobado', aprobadoPor: quien(), aprobadoEn: new Date().toISOString(), ...(g0.reposicion === 'reembolso' ? { reembolso: 'pendiente' } : {}) }); syncCompensacion(g); render(); toast(g.reposicion === 'reembolso' ? 'Aprobado · falta reembolsar a Casa ' + g.casaPaga : 'Aprobado y abonado a Casa ' + g.casaPaga); };
 A.reembolsar = id => { const g = db.get('gastos', id); openForm('Reembolsar a Casa ' + g.casaPaga + ' · ' + money(g.monto), [{ name: 'cuenta', label: '¿De dónde sale el dinero?', type: 'select', options: cuentaOpts(['chica', 'banco']) }, { name: 'fechaR', label: 'Fecha', type: 'date', value: today() }], v => { if (saldoCuenta(v.cuenta) < num(g.monto)) return CUENTAS[v.cuenta] + ' solo tiene ' + money(saldoCuenta(v.cuenta)); db.put('gastos', { ...g, cuenta: v.cuenta, reembolso: 'pagado', reembolsadoEn: v.fechaR, reembolsadoPor: quien() }); }, { ok: 'Reembolsar', toast: 'Reembolso registrado' }); };
-A.rechazarGasto = id => confirmar('¿Rechazar este gasto?', () => db.put('gastos', { ...db.get('gastos', id), estado: 'rechazado' }), 'Rechazar');
+A.rechazarGasto = id => { const g = db.get('gastos', id); openForm('Rechazar gasto' + (g.casaPaga ? ' de Casa ' + g.casaPaga : '') + ' · ' + money(g.monto), [{ name: 'motivoRechazo', label: '¿Por qué se rechaza? (la casa lo verá)', type: 'textarea', required: true, full: true }], v => { db.put('gastos', { ...g, estado: 'rechazado', motivoRechazo: v.motivoRechazo, rechazadoPor: quien(), rechazadoEn: new Date().toISOString() }); }, { ok: 'Rechazar', toast: 'Rechazado. La casa verá el motivo', intro: `<p class="small muted">${esc(g.concepto)}${g.detalle ? ' · ' + esc(g.detalle) : ''}</p>` }); };
 A.borrarGasto = id => confirmar('¿Borrar este gasto?', () => {
   const g = db.get('gastos', id);
   if (g.abonoId) db.del('abonos', g.abonoId);
