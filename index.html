@@ -238,6 +238,15 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .fi svg{width:17px;height:17px}
 .fe.ok .fi{background:var(--ok-soft);color:var(--ok)}.fe.warn .fi{background:var(--warn-soft);color:var(--warn)}.fe.bad .fi{background:var(--bad-soft);color:var(--bad)}
 .ft{flex:1;min-width:0;font-size:.93rem}
+.saldoC h3{font-size:1.08rem;font-weight:700;margin-bottom:.2rem}
+.saldoC .estado{font-size:.95rem}
+.espera{display:flex;gap:.6rem;align-items:flex-start;background:var(--warn-soft);border:1px solid rgba(244,200,112,.35);color:var(--warn-ink);border-radius:16px;padding:.75rem .85rem;margin-top:.75rem;animation:pulse2 2.4s ease-in-out infinite}
+.espera svg{width:20px;height:20px;flex:none;margin-top:2px;color:var(--warn)}
+@keyframes pulse2{50%{border-color:rgba(244,200,112,.75)}}
+.toca{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line-2);display:flex;flex-direction:column;gap:.35rem;font-size:.93rem}
+.link.sub{display:inline-flex;align-items:center;text-align:left;gap:.4rem;color:var(--muted);font-weight:500;font-size:.88rem;text-decoration:underline;text-underline-offset:3px}
+.link.sub:hover{color:var(--accent)}
+.heroX .acts button{max-width:84px;text-align:center;line-height:1.15}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -354,8 +363,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.5';
+const APP_VER = '2.6';
 const NOVEDADES = [
+  ['2.6', 'Inicio de casa simplificado · Pago de cuotas en efectivo a vigilante o administrador con doble confirmación · Saldo con pago en espera · Próximo pago y cuotas extraordinarias · Gasto del condominio con reembolso o a cuenta'],
   ['2.5', 'Conexión a la nube integrada: todos los dispositivos sincronizan solos · Aviso visible si un dispositivo no está conectado · Descarga completa de la nube en cada actualización'],
   ['2.4', 'Montos con formato $ al escribir · Teléfonos solo números · Traspasos con saldos y validación · Resumen de movimientos en el inicio · Respaldos automáticos al actualizar'],
   ['2.3', 'Paquetes: entrega marcada por caseta o por la casa · Apartado de palapa y estacionamiento con autorización · Botón para salir en caseta'],
@@ -892,7 +902,7 @@ function openMore() {
 function openQuick() {
   let o = [];
   if (isCaseta()) o = [{ l: 'Recibir dinero de una casa', ic: 'cash', fn: () => A.cobroCaseta() }, { l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
-  else if (isCasa()) { const n = SES.casa; o = [{ l: 'Apartar palapa o estacionamiento', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Viene una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Registrar un pago', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }];
+  else if (isCasa()) { const n = SES.casa; o = [{ l: 'Pagar mis cuotas', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Registrar una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }];
     if (isAdmin()) o.push({ l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
     o.push({ l: 'Emergencia', ic: 'sos', cls: 'danger', fn: () => A.emergencia(n) }); }
   else o = [{ l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
@@ -902,7 +912,7 @@ function heroHtml() {
   const h = new Date().getHours(); const sal = h < 12 ? 'buenos días' : h < 19 ? 'buenas tardes' : 'buenas noches';
   let who, q, acts;
   if (isCaseta()) { who = vigName(SES.vigilanteId); q = '¿qué está pasando en la entrada?'; acts = [['user', 'visita', 'A.entrada()'], ['box', 'paquete', 'A.paquete()', 1], ['cash', 'cobro', 'A.cobroCaseta()']]; }
-  else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'visita', `A.prereg(${SES.casa})`], ['wallet', 'pagar', `A.pagoCasa(${SES.casa})`, 1], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
+  else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'registrar visita', `A.prereg(${SES.casa})`], ['umbrella', 'apartar área', 'A.reservar()'], ['pencil', 'reportar problema', `A.incidencia(${SES.casa})`], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
   else { who = 'administrador'; q = '¿qué revisamos hoy?'; acts = [['receipt', 'gasto', 'A.gasto()'], ['coins', 'cobrar', 'A.pagoAdmin()', 1], ['chat', 'aviso', 'A.aviso()']]; }
   return `<div class="heroWrap"><section class="heroX"><div class="eye">${ic('eye')}<span>${esc(cfg().nombre).toLowerCase()} · ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
     <div class="greet">${sal}, ${esc(who)}</div><div class="q">${q}</div><div class="spark">${ic('spark')}</div>
@@ -927,9 +937,10 @@ function table(cols, rows, foot, emptyMsg = 'Sin registros') {
   return `<div class="tw"><table><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}">${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody>${foot ? `<tfoot><tr>${foot.map((f, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${f}</td>`).join('')}</tr></tfoot>` : ''}</table></div>`;
 }
 const kpi = (lbl, val, cls = '', sub = '') => `<div class="card kpi ${cls}"><div class="lbl">${esc(lbl)}</div><div class="val">${val}</div>${sub ? `<div class="small muted">${sub}</div>` : ''}</div>`;
-const PEND = ['pendiente', 'con_vigilante', 'entregado_admin'];
+const PEND = ['pendiente', 'aviso_vigilante', 'con_vigilante', 'entregado_admin'];
+const EN_CASETA = ['aviso_vigilante', 'con_vigilante', 'entregado_admin'];
 const AREAS = { palapa: 'Palapa', estacionamiento: 'Estacionamiento' };
-const tagEstado = e => ({ solicitada: '<span class="tag warn">Por autorizar</span>', aprobada: '<span class="tag ok">Autorizado</span>', rechazada: '<span class="tag bad">Rechazado</span>', cancelada: '<span class="tag">Cancelado</span>', con_vigilante: '<span class="tag warn">Con el vigilante</span>', entregado_admin: '<span class="tag brand">Entregado al admin · por confirmar</span>', pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
+const tagEstado = e => ({ aviso_vigilante: '<span class="tag warn">Falta que el vigilante confirme</span>', solicitada: '<span class="tag warn">Por autorizar</span>', aprobada: '<span class="tag ok">Autorizado</span>', rechazada: '<span class="tag bad">Rechazado</span>', cancelada: '<span class="tag">Cancelado</span>', con_vigilante: '<span class="tag warn">Con el vigilante</span>', entregado_admin: '<span class="tag brand">Entregado al admin · por confirmar</span>', pendiente: '<span class="tag warn">Pendiente</span>', confirmado: '<span class="tag ok">Confirmado</span>', aprobado: '<span class="tag ok">Aprobado</span>', rechazado: '<span class="tag bad">Rechazado</span>', abierta: '<span class="tag bad">Abierta</span>', 'en proceso': '<span class="tag warn">En proceso</span>', resuelta: '<span class="tag ok">Resuelta</span>' }[e] || (e ? `<span class="tag">${esc(e)}</span>` : ''));
 const mesFiltro = (key, label = 'Mes') => { const v = UI.f[key] ?? ym(); return `<label class="fld" style="max-width:200px"><span>${label}</span><input type="month" value="${v}" onchange="UI.f['${key}']=this.value;render()"></label>`; };
 function estadoCuentaRows(n) {
   const m = [];
@@ -958,18 +969,18 @@ V.inicio = () => {
   const prer = sortBy(db.all('preregistros').filter(p => p.casa == n && p.fecha >= today() && p.estado !== 'llegó'), 'fecha', false);
   const avisos = sortBy(db.all('avisos'), 'fecha').slice(0, 3);
   const pend = db.all('abonos').filter(a => a.casa == n && PEND.includes(a.estado)).length;
-  const conVig = db.all('abonos').filter(a => a.casa == n && (a.estado === 'con_vigilante' || a.estado === 'entregado_admin'));
+  const conVig = [];
+  const cc = cuentaCasa(n), pAb = cc.pendAb;
   const misRes = sortBy(db.all('reservas').filter(r => r.casa == n && r.fecha >= today() && ['solicitada', 'aprobada'].includes(r.estado)), 'fecha', false);
-  return `${paq.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Paquetes en caseta</h3><span class="tag warn">${paq.length}</span></div><div class="mt">${misPaquetesHtml(n)}</div></div>` : ''}${misRes.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Mis apartados</h3><button class="link" onclick="go('areas')">Ver todos</button></div><div class="list mt">${misRes.map(resItem).join('')}</div></div>` : ''}${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}
-  <div class="grid2">
-    <div class="card hero ${s > 0.009 ? 'warn' : 'ok'}"><div class="lbl">Saldo de Casa ${n}</div><div class="big">${money(Math.abs(s))}</div>
-      <div>${s > 0.009 ? 'Por pagar' : s < -0.009 ? 'Saldo a favor' : 'Al corriente'}${pend ? ` · ${pend} pago(s) por confirmar` : ''}</div>
-      <div class="row mt"><button class="btn primary" onclick="A.pagoCasa(${n})">Registrar un pago</button><button class="btn" onclick="go('micuenta')">Estado de cuenta</button></div></div>
-    <div class="card"><h3>¿Qué necesitas?</h3><div class="quick">
-      <button onclick="A.prereg(${n})">Avisar que viene una visita</button>
-      <button onclick="A.incidencia(${n})">Reportar un problema</button>
-      <button onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button>
-      <button class="danger" onclick="A.emergencia(${n})">Emergencia: avisar a caseta</button></div></div>
+  return `${paq.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Paquetes en caseta</h3><span class="tag warn">${paq.length}</span></div><div class="mt">${misPaquetesHtml(n)}</div></div>` : ''}${misRes.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Mis apartados</h3><button class="link" onclick="go('areas')">Ver todos</button></div><div class="list mt">${misRes.map(resItem).join('')}</div></div>` : ''}${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'aviso_vigilante' ? '<b>en la caseta</b>, falta que el vigilante confirme que lo recibió' : a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}
+  <div class="card hero saldoC ${cc.efectivo > 0.009 ? 'warn' : 'ok'}">
+    <h3>Saldo de la Casa ${n}</h3>
+    <div class="big">${money(Math.max(0, cc.efectivo))}</div>
+    <div class="estado">${cc.efectivo > 0.009 ? 'Por pagar' : cc.saldo < -0.009 && !cc.pend ? 'Saldo a favor ' + money(-cc.saldo) : 'Al corriente'}${cc.pend ? ' · <b>pago en espera de confirmación</b>' : ''}</div>
+    ${pAb.map(a => `<div class="espera">${ic('clock')}<div><b>${money(a.monto)} en espera de confirmación</b><div class="small">${esc(a.concepto || a.nota || '')} · ${a.estado === 'aviso_vigilante' ? `está en la caseta, lo recibió <b>${esc(a.recibidoPor)}</b> (falta que lo confirme)` : a.estado === 'con_vigilante' ? `está en la caseta con <b>${esc(a.recibidoPor)}</b>, falta que lo entregue al administrador` : a.estado === 'entregado_admin' ? `ya lo tiene el administrador, falta que lo confirme` : a.recibidoPor === 'Administrador' ? 'lo tiene el administrador, falta que lo confirme' : 'falta que el administrador lo vea en la cuenta'}</div></div></div>`).join('')}
+    <div class="toca">${cc.deb.length ? cc.deb.map(d => `<div class="row sp"><span>${d.tipo === 'especial' ? '<span class="tag brand">Extraordinaria</span> ' : ''}${esc(d.concepto)}</span><b>${money(d.resta)}</b></div>`).join('') : `${cc.cubre && cc.pend ? `<div class="row sp"><span class="muted">Cuota de ${mesLabel(cc.prox0)}${cc.cubre > 1 ? ' y siguientes' : ''}</span><span class="tag warn">Pagada · en espera</span></div>` : cc.cubre ? `<div class="small muted">Tu saldo a favor cubre ${cc.cubre === 1 ? 'la cuota de ' + mesLabel(cc.prox0) : cc.cubre + ' cuotas desde ' + mesLabel(cc.prox0)}</div>` : ''}<div class="row sp"><span class="muted">Próximo pago · Cuota de ${mesLabel(cc.prox)}</span><b>${money(cc.cuota)}</b></div>`}</div>
+    <div class="row mt"><button class="btn primary" onclick="A.pagoCasa(${n})">${ic('wallet')} Pagar mis cuotas</button><button class="btn" onclick="go('micuenta')">Estado de cuenta</button></div>
+    <button class="link sub mt" onclick="A.gastoCondomino(${n})">${ic('receipt')} ¿Pagaste algo del condominio de tu bolsa? Regístralo aquí</button>
   </div>
   <div class="mt">${feedHtml(feedCasa(n), 'feedC')}</div>
   <div class="grid2 mt">
@@ -980,11 +991,11 @@ V.inicio = () => {
 };
 V.micuenta = () => {
   const n = SES.casa, s = saldoCasa(n), r = casaRec(n) || {};
-  return `<div class="sect"><h2>Estado de cuenta · Casa ${n}</h2><div class="row"><button class="btn primary" onclick="A.pagoCasa(${n})">Registrar pago</button><button class="btn" onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button><button class="btn" onclick="A.miCasa(${n})">Mis datos y contactos</button></div></div>
+  return `<div class="sect"><h2>Estado de cuenta · Casa ${n}</h2><div class="row"><button class="btn primary" onclick="A.pagoCasa(${n})">Pagar mis cuotas</button><button class="btn" onclick="A.gastoCondomino(${n})">Pagué un gasto del condominio</button><button class="btn" onclick="A.miCasa(${n})">Mis datos y contactos</button></div></div>
   <div class="kpis">${kpi(s > 0 ? 'Por pagar' : 'Saldo a favor', money(Math.abs(s)), s > 0.009 ? 'warn' : '')}${kpi('Cuota mensual', money(r.cuota != null && r.cuota !== '' ? r.cuota : cfg().cuota))}</div>
   ${estadoCuentaTable(n)}
   <h3 class="mt">Gastos que pagué por el condominio</h3>
-  ${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Concepto', f: g => esc(g.categoria + ' – ' + g.concepto) }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: 'Estado', f: g => tagEstado(g.estado || 'aprobado') }, { h: '', f: g => fileBtn(g.comprobante) }],
+  ${table([{ h: 'Fecha', f: g => fdate(g.fecha) }, { h: 'Concepto', f: g => esc(g.categoria + ' – ' + g.concepto) }, { h: 'Monto', num: 1, f: g => money(g.monto) }, { h: 'Estado', f: g => tagEstado(g.estado || 'aprobado') + (g.reposicion === 'reembolso' ? `<div class="small muted">${g.reembolso === 'pagado' ? 'Reembolsado' : 'Reembolso'}</div>` : '<div class="small muted">A cuenta de cuotas</div>') }, { h: '', f: g => fileBtn(g.comprobante) }],
     sortBy(db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n), 'fecha'), null, 'Ninguno')}`;
 };
 V.visitas = () => {
@@ -1025,7 +1036,7 @@ function gastosTable(rows, admin) {
     { h: 'Fecha', f: g => fdate(g.fecha) },
     { h: 'Categoría', f: g => esc(g.categoria) },
     { h: 'Concepto', f: g => esc(g.concepto) + (g.proveedor ? `<div class="small muted">${esc(g.proveedor)}</div>` : '') },
-    { h: 'Pagado de', f: g => g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + ' (compensa cuota)' : esc(CUENTAS[g.cuenta] || g.cuenta) },
+    { h: 'Pagado de', f: g => (g.cuenta === 'condomino' ? 'Casa ' + g.casaPaga + (g.reposicion === 'reembolso' ? ' (pide reembolso)' : ' (a cuenta de cuotas)') : esc(CUENTAS[g.cuenta] || g.cuenta)) + (g.reembolso === 'pagado' ? `<div class="small muted">Reembolsado a Casa ${g.casaPaga}</div>` : g.reembolso === 'pendiente' ? `<div><span class="tag warn">Reembolso pendiente</span></div>` : '') },
     { h: 'Monto', num: 1, f: g => money(g.monto) },
     { h: 'Comprobante', f: g => fileBtn(g.comprobante) },
     ...(admin ? [{ h: '', f: g => `<span class="nowrap">${g.estado === 'pendiente' ? `<button class="btn sm primary" onclick="A.aprobarGasto('${g.id}')">Aprobar</button> <button class="btn sm" onclick="A.rechazarGasto('${g.id}')">Rechazar</button>` : `<button class="btn sm" onclick="A.gasto('${g.id}')">Editar</button> <button class="btn sm" onclick="A.borrarGasto('${g.id}')">Borrar</button>`}</span>` }] : [])
@@ -1074,7 +1085,7 @@ V.panel = () => {
   const c = cfg(), m = ym();
   const porCobrar = Array.from({ length: NUM_CASAS }, (_, i) => Math.max(0, saldoCasa(i + 1))).reduce((a, b) => a + b, 0);
   const pagosPend = db.all('abonos').filter(a => PEND.includes(a.estado));
-  const efVig = db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'entregado_admin');
+  const efVig = db.all('abonos').filter(a => EN_CASETA.includes(a.estado));
   const gastosPend = db.all('gastos').filter(g => g.estado === 'pendiente');
   const gMes = sum(gastosValidos().filter(g => ym(g.fecha) === m));
   const serv = db.all('servicios').map(s => ({ s, e: estadoServicio(s) })).filter(x => x.e.dias <= 7).sort((a, b) => a.e.dias - b.e.dias);
@@ -1085,7 +1096,7 @@ V.panel = () => {
   return `${venc ? `<div class="notice">El periodo ${perLabel(c.anio)} terminó el 31 de octubre. <button class="link" onclick="go('reportes')">Genera el acta y entrega a la siguiente casa</button>.</div>` : ''}<div class="sect"><h2>Panel de administración</h2><span class="muted">Periodo ${perLabel(c.anio)} · Administra: ${esc(casaLabel(c.casaAdmin))}</span></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}
     ${kpi('Por cobrar a casas', money(porCobrar), porCobrar > 0 ? 'warn' : '')}${kpi('Gastos del mes', money(gMes))}</div>
-  ${(() => { const n = db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length; return n ? `<div class="notice">${n} solicitud(es) para apartar palapa o estacionamiento. <button class="link" onclick="go('areas')">Autorizar</button></div>` : ''; })()}${efVig.length ? `<div class="notice info">Efectivo cobrado por vigilantes sin confirmar: <b>${money(sum(efVig))}</b> (${efVig.length}). <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
+  ${(() => { const n = db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length; return n ? `<div class="notice">${n} solicitud(es) para apartar palapa o estacionamiento. <button class="link" onclick="go('areas')">Autorizar</button></div>` : ''; })()}${(() => { const r = db.all('gastos').filter(g => g.reembolso === 'pendiente'); return r.length ? `<div class="notice">${r.length} reembolso(s) por pagar a condóminos: ${money(sum(r))}. <button class="link" onclick="go('gastos')">Ver</button></div>` : ''; })()}${efVig.length ? `<div class="notice info">Efectivo de casas en caseta sin confirmar: <b>${money(sum(efVig))}</b>${efVig.map(a => `<div class="small">Casa ${a.casa} · ${money(a.monto)} · lo tiene ${esc(a.recibidoPor || 'caseta')} · ${a.estado === 'aviso_vigilante' ? 'falta que el vigilante confirme' : a.estado === 'con_vigilante' ? 'falta que te lo entregue' : 'ya te lo entregó, confírmalo'}</div>`).join('')} <button class="link" onclick="go('cuotas')">Revisar y confirmar</button></div>` : ''}${(pagosPend.length || gastosPend.length) ? `<div class="notice">Por revisar: ${pagosPend.length ? `<button class="link" onclick="go('cuotas')">${pagosPend.length} pago(s) de casas</button>` : ''} ${gastosPend.length ? ` · <button class="link" onclick="go('gastos')">${gastosPend.length} gasto(s) pagados por condóminos</button>` : ''}</div>` : ''}
   <div class="grid2">
     <div class="card"><h3>Caseta hoy</h3><p>De turno: <b>${t ? esc(vigName(t.vigilanteId)) + '</b> desde ' + fdt(t.inicio) : 'Nadie ha iniciado turno</b>'}</p>
       ${aus.length ? aus.map(a => `<div class="small">${esc(vigName(a.vigilanteId))}: ${TIPOS_AUS[a.tipo]} · cubre <b>${esc(a.cubreId ? vigName(a.cubreId) : a.cubreNombre || 'sin asignar')}</b></div>`).join('') : '<div class="small muted">Sin ausencias hoy</div>'}
@@ -1117,7 +1128,8 @@ V.gastos = () => {
   const pend = db.all('gastos').filter(g => g.estado === 'pendiente');
   let rows = gastosValidos().filter(g => (m === 'todo' || ym(g.fecha) === m) && (!cat || g.categoria === cat) && (!cta || g.cuenta === cta));
   return `<div class="sect"><h2>Gastos</h2><div class="row"><button class="btn primary" onclick="A.gasto()">Registrar gasto</button><button class="btn" onclick="A.nomina()">Pagar nómina</button></div></div>
-  ${pend.length ? `<div class="card"><h3>Pagados por condóminos · por aprobar</h3><p class="small muted">Al aprobar, el monto se abona a la cuota de la casa que lo pagó.</p>${gastosTable(pend, true)}</div>` : ''}
+  ${pend.length ? `<div class="card"><h3>Pagados por condóminos · por aprobar</h3><p class="small muted">"A cuenta de cuotas" se abona al saldo de la casa al aprobar. "Reembolso" no toca el saldo: después registras de qué caja se le regresó.</p>${gastosTable(pend, true)}</div>` : ''}
+  ${(() => { const r = db.all('gastos').filter(g => g.reembolso === 'pendiente'); return r.length ? `<div class="card"><h3>Reembolsos por pagar</h3><div class="list">${r.map(g => `<div class="item"><div><div class="t">Casa ${g.casaPaga} · ${money(g.monto)}</div><div class="small muted">${esc(g.concepto)} · aprobado ${fdate(g.fecha)}</div></div><button class="btn sm primary" onclick="A.reembolsar('${g.id}')">Reembolsar</button></div>`).join('')}</div></div>` : ''; })()}
   <div class="row">${mesFiltro('gMes')}
     <label class="fld" style="max-width:240px"><span>Categoría</span><select onchange="UI.f.gCat=this.value;render()"><option value="">Todas</option>${CATS.map(c => `<option ${c === cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
     <label class="fld" style="max-width:220px"><span>Pagado de</span><select onchange="UI.f.gCta=this.value;render()"><option value="">Todas</option>${[...Object.entries(CUENTAS), ['condomino', 'Un condómino']].map(([k, l]) => `<option value="${k}" ${k === cta ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
@@ -1309,14 +1321,16 @@ function feedCasa(n) {
     add(p.recibido, 'box', `Llegó un paquete (${nm}) a caseta`, p.entregado ? '' : 'warn');
     if (p.entregado) add(p.entregado, 'box', p.entregadoPor === 'casa' ? `Marcaste que recogiste tu paquete (${nm})` : `Caseta entregó tu paquete (${nm}) a ${esc(p.entregadoA || '')}`, 'ok'); });
   db.all('abonos').filter(a => a.casa == n).forEach(a => {
-    if (a.recibidoPor) { add(a.recibidoEn || a.fecha, 'cash', `Entregaste ${money(a.monto)} a ${esc(a.recibidoPor)} · ${esc(a.concepto || '')}`, a.estado === 'confirmado' ? '' : 'warn');
+    if (a.recibidoPor && a.recibidoPor !== 'Administrador') { add(a.recibidoEn || a.fecha, 'cash', `Entregaste ${money(a.monto)} a ${esc(a.recibidoPor)} · ${esc(a.concepto || '')}`, a.estado === 'confirmado' ? '' : 'warn');
+      if (a.vigConfirmadoEn) add(a.vigConfirmadoEn, 'cash', `${esc(a.recibidoPor)} confirmó que tiene tus ${money(a.monto)}`);
       if (a.entregadoEn) add(a.entregadoEn, 'cash', `El vigilante entregó tus ${money(a.monto)} al administrador`); }
     else if (a.metodo !== 'compensacion') add(a.creado || a.fecha, 'wallet', `${a.registradoPor && a.registradoPor !== 'Casa ' + n ? 'Se registró' : 'Registraste'} un pago de ${money(a.monto)} (${esc(a.metodo || '')})`, a.estado === 'pendiente' ? 'warn' : '');
     if (a.estado === 'confirmado' && (a.confirmadoEn || a.confirmadoPor)) add(a.confirmadoEn || a._u && new Date(a._u).toISOString(), 'shield', `El administrador confirmó la recepción de ${money(a.monto)}`, 'ok');
     if (a.estado === 'rechazado') add(a._u && new Date(a._u).toISOString(), 'alert', `Pago de ${money(a.monto)} rechazado`, 'bad'); });
   db.all('cargos').filter(c => c.casa == n).forEach(c => add(c.fecha, 'receipt', `Cargo: ${esc(c.concepto)} · ${money(c.monto)}`));
   db.all('gastos').filter(g => g.cuenta === 'condomino' && g.casaPaga == n).forEach(g => { add(g.creado || g.fecha, 'receipt', `Reportaste un gasto pagado de tu bolsa: ${esc(g.concepto)} · ${money(g.monto)}`, g.estado === 'pendiente' ? 'warn' : '');
-    if (g.estado === 'aprobado') add(g._u && new Date(g._u).toISOString(), 'shield', `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok'); });
+    if (g.estado === 'aprobado') add(g.aprobadoEn || (g._u && new Date(g._u).toISOString()), 'shield', g.reposicion === 'reembolso' ? `Aprobado: te reembolsarán ${money(g.monto)}` : `Aprobado y abonado a tu cuenta: ${money(g.monto)}`, 'ok');
+    if (g.reembolso === 'pagado') add(g.reembolsadoEn, 'wallet', `Te reembolsaron ${money(g.monto)} (${esc(g.concepto)})`, 'ok'); });
   db.all('reservas').filter(r => r.casa == n).forEach(r => { add(r.creado, 'umbrella', `Apartado de ${AREAS[r.area].toLowerCase()} para el ${fdate(r.fecha)}`, r.estado === 'solicitada' ? 'warn' : '');
     if (r.estado === 'aprobada' && r.autorizadoEn) add(r.autorizadoEn, 'umbrella', `Autorizaron tu apartado de ${AREAS[r.area].toLowerCase()} (${fdate(r.fecha)})`, 'ok');
     if (r.estado === 'rechazada') add(r._u && new Date(r._u).toISOString(), 'umbrella', `Rechazaron tu apartado de ${AREAS[r.area].toLowerCase()}${r.motivoRechazo ? ': ' + esc(r.motivoRechazo) : ''}`, 'bad'); });
@@ -1386,7 +1400,7 @@ V.c_paquetes = () => `<div class="row"><button class="btn primary lg" onclick="A
 V.c_caja = () => {
   const mv = movimientos('vigilante').slice().reverse().slice(0, 60);
   const serv = db.all('servicios').filter(s => s.responsable === 'caseta');
-  const porEnt = sum(db.all('abonos').filter(a => a.estado === 'con_vigilante'));
+  const porEnt = sum(db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'aviso_vigilante'));
   return `<div class="kpis">${kpi('Fondo de caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}${kpi('Cobros por entregar al admin', money(porEnt), porEnt > 0 ? 'warn' : '')}</div>
   <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Basura')">Pagar basura</button><button class="btn primary lg" onclick="A.pagoCaseta('Jardinería')">Pagar jardinero</button><button class="btn lg" onclick="A.pagoCaseta('Otros')">Otro pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
   ${cobrosCasetaHtml()}
@@ -1454,14 +1468,57 @@ const metodoCuenta = m => m === 'Efectivo' ? 'chica' : 'banco';
 A.borrar = (col, id) => confirmar('¿Borrar este registro?', () => db.del(col, id), 'Borrar');
 
 /* ---- Pagos de casas ---- */
-A.pagoCasa = n => openForm('Registrar pago · Casa ' + n, [
-  { name: 'monto', label: 'Monto pagado', type: 'number', required: true, value: Math.max(0, saldoCasa(n)) || '' },
-  { name: 'fecha', label: 'Fecha', type: 'date', value: today(), required: true },
-  { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Transferencia', 'Depósito', 'Efectivo'] },
-  { name: 'nota', label: 'Nota (opcional)', placeholder: 'Ej. cuota de noviembre' },
-  { name: 'comprobante', label: 'Foto del comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
-], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('abonos', { ...v, casa: n, estado: isAdmin() ? 'confirmado' : 'pendiente', cuenta: metodoCuenta(v.metodo), registradoPor: quien() }); },
-  { intro: isAdmin() ? '' : '<p class="small muted">El administrador lo confirmará al verlo reflejado.</p>', toast: isAdmin() ? 'Pago registrado' : 'Pago enviado para confirmación' });
+function cuentaCasa(n) {
+  const cargos = sortBy(db.all('cargos').filter(c => c.casa == n), 'fecha', false);
+  const conf = sum(db.all('abonos').filter(a => a.casa == n && a.estado === 'confirmado'));
+  const pendAb = db.all('abonos').filter(a => a.casa == n && PEND.includes(a.estado));
+  let disp = conf + sum(pendAb); const deb = [];
+  cargos.forEach(c => { const m = num(c.monto); if (m <= 0) { disp -= m; return; } const pag = Math.min(m, Math.max(0, disp)); disp -= pag; if (m - pag > 0.009) deb.push({ ...c, resta: m - pag }); });
+  const ords = cargos.filter(c => c.tipo !== 'especial' && /^cuota-/.test(c.clave || ''));
+  const ult = ords.length ? ords[ords.length - 1].clave.slice(6) : null;
+  let prox = ult ? isoDate(new Date(+ult.slice(0, 4), +ult.slice(5, 7), 1)).slice(0, 7) : ym();
+  if (prox < ym() && !ult) prox = ym();
+  const efectivo = saldoCasa(n) - sum(pendAb), cuota = cuotaDe(n);
+  const cubre = !deb.length && efectivo < 0 && cuota > 0 ? Math.floor((-efectivo + 0.001) / cuota) : 0;
+  const prox0 = prox; if (cubre) prox = isoDate(new Date(+prox.slice(0, 4), +prox.slice(5, 7) - 1 + cubre, 1)).slice(0, 7);
+  return { saldo: saldoCasa(n), pend: sum(pendAb), pendAb, deb, prox, prox0, cubre, cuota, efectivo };
+}
+const vigOrden = () => sortBy(db.all('vigilantes').filter(v => v.activo !== false), 'nombre', false).sort((a, b) => (a.rol === 'reemplazo') - (b.rol === 'reemplazo'));
+A.pagoCasa = n => {
+  if (isAdmin() && isCasa() && false) return;
+  const cc = cuentaCasa(n), t = turnoActivo();
+  const conceptos = cc.deb.length ? cc.deb.map(d => [d.concepto, d.concepto + ' · ' + money(d.resta)]) : [['Cuota de mantenimiento ' + mesLabel(cc.prox), 'Cuota de ' + mesLabel(cc.prox) + ' · ' + money(cc.cuota)]];
+  if (!cc.deb.length) { const sig = isoDate(new Date(+cc.prox.slice(0, 4), +cc.prox.slice(5, 7), 1)).slice(0, 7); conceptos.push(['Cuota de mantenimiento ' + mesLabel(sig), 'Cuota de ' + mesLabel(sig) + ' (adelantada)']); }
+  conceptos.push(['otro', 'Otro']);
+  const montoDef = cc.deb.length ? cc.deb[0].resta : cc.cuota;
+  const vs = vigOrden();
+  openForm('Pagar mis cuotas · Casa ' + n, [
+    { name: 'concepto', label: '¿Qué estás pagando?', type: 'select', options: conceptos, full: true },
+    { name: 'notaOtro', label: 'Describe el pago', full: true, placeholder: 'Ej. parte de la cuota extraordinaria' },
+    { name: 'monto', label: 'Monto pagado', type: 'number', required: true, value: montoDef || '' },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today(), required: true },
+    { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Efectivo', 'Transferencia', 'Depósito'], value: 'Efectivo' },
+    { name: 'aQuien', label: '¿A quién le pagaste?', type: 'select', options: [['vigilante', 'A un vigilante (caseta)'], ['admin', 'Al administrador (' + casaLabel(cfg().casaAdmin) + ')']], value: 'vigilante' },
+    { name: 'vigilanteId', label: '¿Qué vigilante lo recibió?', type: 'select', options: vs.map(v => [v.id, v.nombre + (v.rol === 'reemplazo' ? ' (reemplazo)' : '')]), value: t ? t.vigilanteId : (vs[0] || {}).id },
+    { name: 'comprobante', label: 'Foto del comprobante (opcional)', type: 'file', accept: 'image/*,application/pdf', full: true }
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    const concepto = v.concepto === 'otro' ? (v.notaOtro || 'Otro pago') : v.concepto;
+    if (v.concepto === 'otro' && !v.notaOtro) return 'Describe el pago';
+    const base = { casa: n, fecha: v.fecha, monto: v.monto, concepto, nota: concepto, comprobante: v.comprobante, registradoPor: quien(), origen: 'casa' };
+    if (isAdmin()) { db.put('abonos', { ...base, metodo: v.metodo, cuenta: metodoCuenta(v.metodo), estado: 'confirmado', confirmadoPor: quien(), confirmadoEn: new Date().toISOString() }); return; }
+    if (v.metodo === 'Efectivo' && v.aQuien === 'vigilante') {
+      if (!v.vigilanteId) return 'Elige el vigilante';
+      db.put('abonos', { ...base, metodo: 'Efectivo con vigilante', cuenta: 'chica', estado: 'aviso_vigilante', vigilanteId: v.vigilanteId, recibidoPor: vigName(v.vigilanteId), recibidoEn: new Date().toISOString() });
+    } else db.put('abonos', { ...base, metodo: v.metodo + (v.metodo === 'Efectivo' ? ' al administrador' : ''), cuenta: metodoCuenta(v.metodo), estado: 'pendiente', recibidoPor: v.metodo === 'Efectivo' ? 'Administrador' : '' });
+  }, {
+    ok: 'Registrar pago', toast: isAdmin() ? 'Pago registrado' : 'Pago registrado · en espera de confirmación',
+    intro: `<p class="small muted">Este pago se abona al <b>saldo de tu casa</b> (cuotas de mantenimiento y extraordinarias). ${isAdmin() ? '' : 'Quedará en espera hasta que el vigilante y el administrador confirmen que tienen el dinero.'}</p>`,
+    onLive: f => { const ef = f.elements.metodo.value === 'Efectivo'; const show = (nm, on) => { const el = f.elements[nm]; if (el) el.closest('.fld').style.display = on ? '' : 'none'; };
+      show('notaOtro', f.elements.concepto.value === 'otro'); show('aQuien', ef && !isAdmin()); show('vigilanteId', ef && !isAdmin() && f.elements.aQuien.value === 'vigilante');
+      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const d = cc.deb.find(x => x.concepto === f.elements.concepto.value); if (d) setMoney(f.elements.monto, d.resta); else if (/^Cuota de mantenimiento/.test(f.elements.concepto.value)) setMoney(f.elements.monto, cc.cuota); } }
+  });
+};
 A.pagoAdmin = () => openForm('Registrar pago de una casa', [
   { name: 'casa', label: 'Casa', type: 'select', options: casaOpts() },
   { name: 'monto', label: 'Monto', type: 'number', required: true },
@@ -1539,21 +1596,23 @@ A.gasto = (id, pre = {}) => {
 };
 function syncCompensacion(g) {
   const ab = g.abonoId && db.get('abonos', g.abonoId);
-  if (g.cuenta === 'condomino' && g.estado === 'aprobado') {
+  if (g.cuenta === 'condomino' && g.estado === 'aprobado' && g.reposicion !== 'reembolso') {
     const a = db.put('abonos', { ...(ab || {}), casa: g.casaPaga, fecha: g.fecha, monto: g.monto, metodo: 'compensacion', estado: 'confirmado', cuenta: null, nota: g.concepto, gastoId: g.id, comprobante: null });
     if (!ab) db.put('gastos', { ...db.get('gastos', g.id), abonoId: a.id });
   } else if (ab) { db.del('abonos', ab.id); db.put('gastos', { ...db.get('gastos', g.id), abonoId: null }); }
 }
 A.gastoCondomino = n => openForm('Pagué un gasto del condominio', [
-  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
-  { name: 'categoria', label: 'Categoría', type: 'select', options: CATS, value: 'Mantenimiento' },
-  { name: 'concepto', label: '¿Qué pagaste?', required: true, full: true, placeholder: 'Ej. Reparación de bomba de agua' },
+  { name: 'concepto', label: '¿Qué pagaste?', required: true, full: true, placeholder: 'Ej. Reparación de bomba de agua, focos de la entrada' },
+  { name: 'categoria', label: 'Categoría', type: 'select', options: [['', 'Elige una'], ...CATS.filter(c => !/Mantenimiento|Vigilancia|Coberturas/.test(c)).map(c => [c, c])], required: true },
   { name: 'monto', label: 'Monto', type: 'number', required: true },
+  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
   { name: 'proveedor', label: 'A quién se pagó' },
+  { name: 'reposicion', label: '¿Cómo quieres que se te reponga?', type: 'select', options: [['saldo', 'A cuenta de mis cuotas (se descuenta de mi saldo)'], ['reembolso', 'Reembolso (que me regresen el dinero)']], full: true },
   { name: 'comprobante', label: 'Ticket o foto', type: 'file', accept: 'image/*,application/pdf', full: true }
 ], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('gastos', { ...v, cuenta: 'condomino', casaPaga: n, estado: 'pendiente', registradoPor: 'Casa ' + n }); },
-  { intro: '<p class="small muted">Cuando el administrador lo apruebe, el monto se abona a tu cuota (completa o parcial). Si sobra, queda como saldo a favor.</p>', toast: 'Enviado al administrador' });
-A.aprobarGasto = id => { const g = db.put('gastos', { ...db.get('gastos', id), estado: 'aprobado', aprobadoPor: quien() }); syncCompensacion(g); render(); toast('Aprobado y abonado a Casa ' + g.casaPaga); };
+  { intro: '<p class="small muted">El administrador lo revisa. <b>A cuenta:</b> al aprobarlo se descuenta de tu saldo (si sobra, queda a favor). <b>Reembolso:</b> tu saldo no cambia y el administrador te regresa el dinero.</p>', toast: 'Enviado al administrador' });
+A.aprobarGasto = id => { const g0 = db.get('gastos', id); const g = db.put('gastos', { ...g0, estado: 'aprobado', aprobadoPor: quien(), aprobadoEn: new Date().toISOString(), ...(g0.reposicion === 'reembolso' ? { reembolso: 'pendiente' } : {}) }); syncCompensacion(g); render(); toast(g.reposicion === 'reembolso' ? 'Aprobado · falta reembolsar a Casa ' + g.casaPaga : 'Aprobado y abonado a Casa ' + g.casaPaga); };
+A.reembolsar = id => { const g = db.get('gastos', id); openForm('Reembolsar a Casa ' + g.casaPaga + ' · ' + money(g.monto), [{ name: 'cuenta', label: '¿De dónde sale el dinero?', type: 'select', options: cuentaOpts(['chica', 'banco']) }, { name: 'fechaR', label: 'Fecha', type: 'date', value: today() }], v => { if (saldoCuenta(v.cuenta) < num(g.monto)) return CUENTAS[v.cuenta] + ' solo tiene ' + money(saldoCuenta(v.cuenta)); db.put('gastos', { ...g, cuenta: v.cuenta, reembolso: 'pagado', reembolsadoEn: v.fechaR, reembolsadoPor: quien() }); }, { ok: 'Reembolsar', toast: 'Reembolso registrado' }); };
 A.rechazarGasto = id => confirmar('¿Rechazar este gasto?', () => db.put('gastos', { ...db.get('gastos', id), estado: 'rechazado' }), 'Rechazar');
 A.borrarGasto = id => confirmar('¿Borrar este gasto?', () => {
   const g = db.get('gastos', id);
@@ -1733,6 +1792,8 @@ A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
   const vn = isCaseta() ? vigName(SES.vigilanteId) : quien();
   db.put('abonos', { casa: +v.casa, fecha: today(), monto: v.monto, metodo: 'Efectivo con vigilante', cuenta: 'chica', estado: 'con_vigilante', concepto: v.concepto, nota: v.nota, comprobante: v.comprobante, vigilanteId: isCaseta() ? SES.vigilanteId : '', recibidoPor: vn, recibidoEn: new Date().toISOString(), registradoPor: quien() });
 }, { ok: 'Registrar', toast: 'Registrado. Entrégalo al administrador', intro: '<p class="small muted">Este dinero <b>no</b> entra al fondo de caseta: guárdalo aparte y entrégalo al administrador. La casa verá que lo tienes tú hasta que el administrador lo confirme.</p>' });
+A.vigConfirma = id => { const a = db.get('abonos', id); confirmar(`¿Recibiste ${money(a.monto)} de Casa ${a.casa}? (${a.concepto || ''})`, () => { db.put('abonos', { ...a, estado: 'con_vigilante', vigConfirmadoPor: quien(), vigConfirmadoEn: new Date().toISOString() }); toast('Confirmado. Ahora entrégalo al administrador'); }, 'Sí, lo tengo'); };
+A.vigNiega = id => { const a = db.get('abonos', id); openForm('No recibí este pago', [{ name: 'motivo', label: '¿Qué pasó?', required: true, full: true, placeholder: 'Ej. no me lo han entregado / el monto es distinto' }], v => { db.put('abonos', { ...a, estado: 'rechazado', nota: (a.nota || '') + ' · Caseta: ' + v.motivo, rechazadoPor: quien() }); }, { ok: 'Avisar', toast: 'Avisado a la casa y al administrador' }); };
 A.entregarCobros = () => {
   const xs = db.all('abonos').filter(a => a.estado === 'con_vigilante');
   if (!xs.length) return toast('No hay cobros por entregar');
@@ -1740,10 +1801,10 @@ A.entregarCobros = () => {
 };
 A.entregarCobro = id => { const a = db.get('abonos', id); confirmar(`¿Entregaste ${money(a.monto)} de Casa ${a.casa} al administrador?`, () => db.put('abonos', { ...a, estado: 'entregado_admin', entregadoEn: new Date().toISOString(), entregadoPor: quien() }), 'Sí, ya lo entregué'); };
 function cobrosCasetaHtml() {
-  const xs = sortBy(db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'entregado_admin'), 'recibidoEn');
+  const xs = sortBy(db.all('abonos').filter(a => EN_CASETA.includes(a.estado)), 'recibidoEn');
   const cv = xs.filter(a => a.estado === 'con_vigilante');
   return `<div class="card mt"><div class="row sp"><h3 style="margin:0">Cobros a casas</h3><button class="btn primary" onclick="A.cobroCaseta()">${ic('cash')} Recibir dinero de una casa</button></div>
-    ${xs.length ? `<div class="list mt">${xs.map(a => `<div class="item"><div><div class="t">Casa ${a.casa} · ${money(a.monto)}</div><div class="small muted">${esc(a.concepto || '')}${a.nota ? ' · ' + esc(a.nota) : ''} · recibió ${esc(a.recibidoPor || '')} ${fdt(a.recibidoEn || a.fecha)}</div><div class="mt" style="margin-top:.3rem">${tagEstado(a.estado)}</div></div>${a.estado === 'con_vigilante' ? `<button class="btn sm" onclick="A.entregarCobro('${a.id}')">Ya lo entregué</button>` : ''}</div>`).join('')}</div>
+    ${xs.length ? `<div class="list mt">${xs.map(a => `<div class="item"><div><div class="t">Casa ${a.casa} · ${money(a.monto)}</div><div class="small muted">${esc(a.concepto || '')}${a.nota && a.nota !== a.concepto ? ' · ' + esc(a.nota) : ''} · ${a.estado === 'aviso_vigilante' ? 'la casa dice que se lo dio a' : 'recibió'} ${esc(a.recibidoPor || '')} ${fdt(a.recibidoEn || a.fecha)}${a.origen === 'casa' ? ' · lo registró la casa' : ''}</div><div class="mt" style="margin-top:.3rem">${tagEstado(a.estado)}</div></div>${a.estado === 'aviso_vigilante' ? `<div class="row"><button class="btn sm primary" onclick="A.vigConfirma('${a.id}')">Sí lo recibí</button><button class="btn sm" onclick="A.vigNiega('${a.id}')">No lo recibí</button></div>` : a.estado === 'con_vigilante' ? `<button class="btn sm" onclick="A.entregarCobro('${a.id}')">Ya lo entregué</button>` : ''}</div>`).join('')}</div>
       ${cv.length ? `<div class="row sp mt"><span>Por entregar: <b>${money(sum(cv))}</b></span><button class="btn primary" onclick="A.entregarCobros()">Entregar todo al administrador</button></div>` : '<p class="small muted mt">Todo entregado. Falta que el administrador confirme.</p>'}`
       : '<p class="muted small mt">No hay dinero de casas en caseta.</p>'}</div>`;
 }
@@ -1895,7 +1956,7 @@ A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; S
   meses.forEach((m, k) => {
     for (let n = 1; n <= NUM_CASAS; n++) {
       db.put('cargos', { casa: n, fecha: m + '-01', concepto: 'Cuota de mantenimiento ' + mesLabel(m), monto: 4500, tipo: 'ordinaria', clave: 'cuota-' + m });
-      if (!(n === 6 && k > 0) && !(n === 4 && k === 2)) db.put('abonos', { casa: n, fecha: m + '-0' + (2 + n % 6), monto: 4500, metodo: n === 2 ? 'Efectivo' : 'Transferencia', cuenta: n === 2 ? 'chica' : 'banco', estado: 'confirmado' });
+      db.put('abonos', { casa: n, fecha: m + '-0' + (2 + n % 6), monto: 4500, metodo: n === 2 ? 'Efectivo' : 'Transferencia', cuenta: n === 2 ? 'chica' : 'banco', estado: 'confirmado' });
     }
     db.put('transferencias', { de: 'banco', a: 'chica', monto: 23000, fecha: m + '-05', nota: 'Nómina del mes' });
     db.put('transferencias', { de: 'chica', a: 'vigilante', monto: 2500, fecha: m + '-05', nota: 'Fondo basura y jardinero' });
@@ -1905,8 +1966,7 @@ A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; S
     db.put('gastos', { fecha: m + '-15', categoria: 'CFE (luz)', concepto: 'Alumbrado común', monto: 950 + k * 40, cuenta: 'banco', servicioId: sC.id, proveedor: 'CFE', estado: 'aprobado', registradoPor: 'Casa 3' });
   });
   const g = db.put('gastos', { fecha: meses[1] + '-20', categoria: 'Mantenimiento', concepto: 'Reparación de bomba de agua', monto: 1800, cuenta: 'condomino', casaPaga: 5, proveedor: 'Hidráulica Jalisco', estado: 'aprobado', registradoPor: 'Casa 3' }); syncCompensacion(g);
-  db.put('gastos', { fecha: today(), categoria: 'Mantenimiento', concepto: 'Focos para la entrada', monto: 420, cuenta: 'condomino', casaPaga: 1, estado: 'pendiente', registradoPor: 'Casa 1' });
-  db.put('abonos', { casa: 6, fecha: today(), monto: 4500, metodo: 'Transferencia', cuenta: 'banco', estado: 'pendiente', nota: 'Cuota atrasada' });
+  db.put('gastos', { fecha: today(), categoria: 'Otros', concepto: 'Focos para la entrada', monto: 420, cuenta: 'condomino', casaPaga: 1, estado: 'pendiente', reposicion: 'reembolso', registradoPor: 'Casa 1' });
   db.put('ausencias', { vigilanteId: v1.id, tipo: 'vacaciones', desde: addDays(today(), 10), hasta: addDays(today(), 16), cubreId: v3.id, pagoCobertura: 450 * 7 });
   db.put('ausencias', { vigilanteId: v2.id, tipo: 'descanso', desde: addDays(today(), -3), hasta: addDays(today(), -3), cubreId: v3.id, pagoCobertura: 450 });
   db.put('avisos', { titulo: 'Fumigación', texto: 'El sábado a las 9:00 se fumigarán las áreas comunes. Mantengan mascotas dentro.', fecha: today() });
