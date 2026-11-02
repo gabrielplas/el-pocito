@@ -251,6 +251,8 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .dinero .dtot{font-size:1.4rem;font-variant-numeric:tabular-nums}
 .dsec{margin-top:1rem}.dsh{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:.45rem}
 .dsec .item{margin-bottom:.45rem}.dsec b.neg,.neg{color:var(--bad)}
+.avisoPush{display:flex;gap:.8rem;align-items:center;border-color:rgba(226,245,139,.3);background:linear-gradient(140deg,var(--brand-soft),var(--card) 70%)}
+.avisoPush>svg{width:26px;height:26px;color:var(--accent);flex:none}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -367,8 +369,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.9';
+const APP_VER = '3.0';
 const NOVEDADES = [
+  ['3.0', 'Inicio de sesión validado en el servidor (PIN protegido, bloqueo tras 5 intentos) · PIN guardados en la nube · Notificaciones push en celulares'],
   ['2.9', 'Avisos fijos en el saldo de la casa para gastos a cuenta y reembolsos en espera · Nota libre en gastos pagados por la casa · Motivo de rechazo visible para la casa'],
   ['2.8', 'Aviso de pago duplicado entre casa y caseta · Catálogo de pagos de caseta con atajos · Pagos programados (semanal, cada 2 semanas, mensual o única vez) que la caseta ve y actualiza'],
   ['2.7', 'Dinero en caseta visible en el inicio del vigilante por concepto · Casas pueden dar dinero a la caseta para pagar gastos · Adelantos del administrador a caseta con catálogo de conceptos'],
@@ -515,6 +518,44 @@ function ensureBase0() {
 const syncCfg = () => { const l = LS.get('pocito_sync'); if (l && l.url) return l; const g = window.POCITO_CONFIG; return g && g.url && g.key ? { url: g.url, key: g.key, integrada: true } : {}; };
 // Las claves nuevas (sb_publishable_...) van solo en apikey; las antiguas (JWT eyJ...) también como Bearer.
 const sbHeaders = k => k && k.startsWith('eyJ') ? { apikey: k, Authorization: 'Bearer ' + k } : { apikey: k };
+/* ============ Sesión segura (servidor) ============ */
+const AUTH = { get: () => LS.get('pocito_auth'), set: a => LS.set('pocito_auth', a), clear: () => LS.del('pocito_auth') };
+const seguro = () => !!LS.get('pocito_seguro');
+async function authToken() {
+  const a = AUTH.get(), c = syncCfg(); if (!a || !c.url) return null;
+  if ((a.expires_at || 0) * 1000 - Date.now() > 90000) return a.access_token;
+  try {
+    const r = await fetch(c.url + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: c.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: a.refresh_token }) });
+    if (!r.ok) { if (r.status === 400 || r.status === 401) { AUTH.clear(); syncState.msg = 'Tu sesión expiró: vuelve a entrar con tu PIN'; } return null; }
+    const j = await r.json(); AUTH.set({ ...a, access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at }); return j.access_token;
+  } catch (e) { return null; }
+}
+async function fnCall(name, body) {
+  const c = syncCfg(); const tok = await authToken();
+  const h = { apikey: c.key, 'Content-Type': 'application/json' };
+  if (tok) h.Authorization = 'Bearer ' + tok; else if (c.key && c.key.startsWith('eyJ')) h.Authorization = 'Bearer ' + c.key;
+  const r = await fetch(c.url.replace(/\/+$/, '') + '/functions/v1/' + name, { method: 'POST', headers: h, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json(); } catch (e) { }
+  return { status: r.status, ok: r.ok, j };
+}
+const idAcceso = t => t.tipo === 'casa' ? 'casa:' + t.casa : t.tipo === 'caseta' ? 'vig:' + t.vigilanteId : 'sistema';
+async function loginServidor(t, pin) {
+  try {
+    const r = await fnCall('acceso', { accion: 'login', id: idAcceso(t), pin });
+    if (r.status === 404 && !r.j.error) return { net: true };
+    if (!r.ok) return { msg: (r.j.error || 'No se pudo validar el PIN (' + r.status + ')') + (r.j.restantes > 0 && r.j.restantes < 5 ? ' · te quedan ' + r.j.restantes + ' intento(s)' : '') };
+    AUTH.set(r.j); LS.set('pocito_seguro', 1); return { ok: true };
+  } catch (e) { return { net: true }; }
+}
+async function savePin(id, pin) {
+  if (!syncCfg().url || !seguro()) return '';
+  try { const r = await fnCall('acceso', { accion: 'set_pin', id, pin }); return r.ok ? '' : (r.j.error || 'No se pudo guardar el PIN'); }
+  catch (e) { return 'Sin conexión: no se pudo guardar el PIN en la nube'; }
+}
+async function cargarPerfiles() {
+  if (!syncCfg().url) return;
+  try { const r = await fnCall('acceso', { accion: 'perfiles' }); if (r.ok && r.j.casas) { LS.set('pocito_perfiles', r.j); if (!SES) render(); } } catch (e) { }
+}
 let syncState = { ok: null, msg: 'Modo local: los datos solo viven en este dispositivo', busy: false, last: null };
 let pendingRender = false;
 async function sync() {
@@ -523,11 +564,21 @@ async function sync() {
   syncState.busy = true; updSyncDot();
   const base = c.url.replace(/\/+$/, '') + '/rest/v1/registros';
   const H = { ...sbHeaders(c.key), 'Content-Type': 'application/json' };
+  const tok = await authToken();
+  if (tok) H.Authorization = 'Bearer ' + tok;
+  else if (seguro()) { syncState.busy = false; syncState.ok = SES ? false : syncState.ok; if (SES) syncState.msg = 'Sin conexión con la nube: vuelve a entrar con tu PIN para sincronizar'; updSyncDot(); return; }
   try {
     const snap = { ...S.dirty };
     const rows = Object.keys(snap).map(k => { const [col, id] = k.split('|'); const rec = S.cols[col] && S.cols[col].find(r => r.id === id); return rec ? { id: col + ':' + id, coleccion: col, data: rec } : null; }).filter(Boolean);
     for (let i = 0; i < rows.length; i += 25) {
-      const r = await fetch(base, { method: 'POST', headers: { ...H, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows.slice(i, i + 25)) });
+      const lote = rows.slice(i, i + 25);
+      const r = await fetch(base, { method: 'POST', headers: { ...H, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lote) });
+      if (r.status === 403 && tok) {
+        for (const row of lote) { const r1 = await fetch(base, { method: 'POST', headers: { ...H, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([row]) });
+          if (r1.status === 403) { const k = row.coleccion + '|' + row.id.slice(row.coleccion.length + 1); delete snap[k]; delete S.dirty[k]; console.warn('Sin permiso para guardar', row.id); } else if (!r1.ok) throw new Error('al subir (' + r1.status + ')'); }
+        continue;
+      }
+      if (r.status === 401 && tok) { AUTH.clear(); throw new Error('tu sesión expiró, vuelve a entrar con tu PIN'); }
       if (!r.ok) throw new Error('al subir (' + r.status + ') ' + (await r.text()).slice(0, 140));
     }
     Object.keys(snap).forEach(k => { if (S.dirty[k] === snap[k]) delete S.dirty[k]; });
@@ -749,13 +800,14 @@ let LOGIN = { paso: 'inicio', target: null, pin: '' };
 function loginView() {
   const c = cfg();
   if (LOGIN.paso === 'vig') {
-    const vs = db.all('vigilantes').filter(v => v.activo !== false);
+    let vs = db.all('vigilantes').filter(v => v.activo !== false);
+    if (!vs.length && LS.get('pocito_perfiles')) vs = LS.get('pocito_perfiles').vigilantes || [];
     return `<div class="loginwrap"><div class="login">${brandMark()}<h1>caseta</h1><p class="muted">¿Quién está de turno?</p>
       <div class="lgrid">${vs.map((v, i) => `<button style="--i:${i}" onclick="loginPin({tipo:'caseta',vigilanteId:'${v.id}'},'${esc(v.nombre)}')"><b>${esc(v.nombre)}</b><span class="muted small">${v.rol === 'reemplazo' ? 'Reemplazo' : 'Titular'}</span></button>`).join('') || '<div class="card">Aún no hay vigilantes dados de alta. El administrador debe agregarlos en Vigilancia.</div>'}</div>
       <button class="btn" onclick="LOGIN.paso='inicio';render()">← Regresar</button></div></div>`;
   }
   return `<div class="loginwrap"><div class="login">${brandMark()}<h1>hola,<br>¿quién eres?</h1><p class="muted">${esc(c.nombre)} · Administra este año: <b>${esc(casaLabel(c.casaAdmin))}</b></p>
-    ${syncCfg().url ? '' : `<div class="card" style="margin-top:1.2rem"><b>Este dispositivo no está conectado a la nube.</b><div class="small" style="margin:.3rem 0 .6rem">Pega el enlace de instalación que te mandó el administrador para ver la información de todos.</div><button class="btn" onclick="A.conectarLink()">Conectar este dispositivo</button></div>`}<div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = casaRec(i + 1) || {}; return `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
+    ${syncCfg().url ? '' : `<div class="card" style="margin-top:1.2rem"><b>Este dispositivo no está conectado a la nube.</b><div class="small" style="margin:.3rem 0 .6rem">Pega el enlace de instalación que te mandó el administrador para ver la información de todos.</div><button class="btn" onclick="A.conectarLink()">Conectar este dispositivo</button></div>`}<div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = (casaRec(i + 1) || {}).propietario ? casaRec(i + 1) : ((LS.get('pocito_perfiles') || {}).casas || []).find(x => x.num === i + 1) || {}; return `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
       <button class="alt" style="--i:7" onclick="LOGIN.paso='vig';render()"><b>Caseta</b><span class="small">Vigilante de turno</span></button>
       <button style="--i:8" onclick="loginPin({tipo:'sistema'},'Administrador del sistema')"><b>Sistema</b><span class="muted small">Administrador de la herramienta</span></button>
     </div>
@@ -772,29 +824,43 @@ function loginPin(target, label) {
 }
 function pinDots() { const d = $('#pdots'); if (d) d.innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < LOGIN.pin.length ? 'f' : ''}"></i>`).join(''); }
 function pinKey(k) {
+  if (LOGIN.busy) return;
   if (k === 'del') LOGIN.pin = LOGIN.pin.slice(0, -1); else if (LOGIN.pin.length < 4) LOGIN.pin += k;
   pinDots();
-  if (LOGIN.pin.length === 4) {
-    const t = LOGIN.target; let ok = false;
-    if (t.tipo === 'casa') ok = (casaRec(t.casa) || {}).pin === LOGIN.pin;
-    if (t.tipo === 'sistema') ok = cfg().pinSistema === LOGIN.pin;
-    if (t.tipo === 'caseta') ok = (db.get('vigilantes', t.vigilanteId) || {}).pin === LOGIN.pin;
-    if (!ok) { logEv('PIN incorrecto', t.tipo === 'casa' ? 'Casa ' + t.casa : t.tipo === 'caseta' ? 'Caseta · ' + vigName(t.vigilanteId) : 'Sistema');
-      $('#perr').textContent = 'PIN incorrecto'; LOGIN.pin = ''; const pd = $('#pdots'); if (pd) { pd.classList.remove('shake'); void pd.offsetWidth; pd.classList.add('shake'); } if (navigator.vibrate) navigator.vibrate(120); setTimeout(pinDots, 300); return; }
-    closeModal();
-    SES = { ...t };
-    if (t.tipo === 'caseta') {
-      const act = turnoActivo();
-      if (act && act.vigilanteId === t.vigilanteId) SES.turnoId = act.id;
-      else {
-        if (act) db.put('turnos', { ...act, fin: new Date().toISOString(), notasEntrega: (act.notasEntrega || '') + ' [cerrado al iniciar el siguiente turno]' });
-        SES.turnoId = db.put('turnos', { vigilanteId: t.vigilanteId, inicio: new Date().toISOString(), fin: null }).id;
-      }
-    }
-    LS.set('pocito_ses', SES); logEv('Inició sesión'); LOGIN.paso = 'inicio'; UI.view = null; render();
-  }
+  if (LOGIN.pin.length === 4) verificarPin(LOGIN.target, LOGIN.pin);
 }
-function logout() { if (SES) logEv('Cerró sesión'); SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
+function pinFalla(msg) {
+  $('#perr').textContent = msg; LOGIN.pin = ''; const pd = $('#pdots'); if (pd) { pd.classList.remove('shake'); void pd.offsetWidth; pd.classList.add('shake'); } if (navigator.vibrate) navigator.vibrate(120); setTimeout(pinDots, 300);
+}
+async function verificarPin(t, pin) {
+  const etiqueta = t.tipo === 'casa' ? 'Casa ' + t.casa : t.tipo === 'caseta' ? 'Caseta · ' + vigName(t.vigilanteId) : 'Sistema';
+  let ok = false, viaServidor = false;
+  if (syncCfg().url) {
+    LOGIN.busy = true; const er = $('#perr'); if (er) er.textContent = 'Verificando…';
+    const r = await loginServidor(t, pin); LOGIN.busy = false; if (er) er.textContent = '';
+    if (r.ok) { ok = true; viaServidor = true; }
+    else if (!r.net) { logEv('PIN incorrecto', etiqueta); return pinFalla(r.msg); }
+  }
+  if (!ok) {
+    const localPin = t.tipo === 'casa' ? (casaRec(t.casa) || {}).pin : t.tipo === 'sistema' ? cfg().pinSistema : (db.get('vigilantes', t.vigilanteId) || {}).pin;
+    if (seguro() && !localPin) return pinFalla('Sin conexión: no se puede validar el PIN. Revisa tu internet.');
+    ok = localPin === pin;
+    if (!ok) { logEv('PIN incorrecto', etiqueta); return pinFalla('PIN incorrecto'); }
+  }
+  closeModal();
+  SES = { ...t };
+  if (t.tipo === 'caseta') {
+    const act = turnoActivo();
+    if (act && act.vigilanteId === t.vigilanteId) SES.turnoId = act.id;
+    else {
+      if (act) db.put('turnos', { ...act, fin: new Date().toISOString(), notasEntrega: (act.notasEntrega || '') + ' [cerrado al iniciar el siguiente turno]' });
+      SES.turnoId = db.put('turnos', { vigilanteId: t.vigilanteId, inicio: new Date().toISOString(), fin: null }).id;
+    }
+  }
+  LS.set('pocito_ses', SES); logEv('Inició sesión', viaServidor ? 'validado en el servidor' : 'sin conexión'); LOGIN.paso = 'inicio'; UI.view = null; render();
+  if (viaServidor) { S.lastPull = S.lastPull || null; sync(); }
+}
+function logout() { if (SES) logEv('Cerró sesión'); quitarSuscripcion(); setTimeout(() => AUTH.clear(), 1500); SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
 
 /* ============ Iconos ============ */
 const IC = {
@@ -868,7 +934,7 @@ function render(fromSync) {
   let body = '';
   try { body = V[UI.view](); } catch (e) { console.error(e); body = `<div class="card">Error al mostrar esta sección: ${esc(e.message)}</div>`; }
   const label = (items.find(i => i[0] === UI.view) || [])[1] || '';
-  const hero = UI.view === all[0] ? heroHtml() : (/^\s*<div class="sect[\s"]/.test(body) ? '' : `<h1 class="pgtitle">${esc(label)}</h1>`);
+  const hero = UI.view === all[0] ? heroHtml() + avisosCard() : (/^\s*<div class="sect[\s"]/.test(body) ? '' : `<h1 class="pgtitle">${esc(label)}</h1>`);
   const NP = navCount(); const prim = all.slice(0, all.length > NP + 1 ? NP : NP + 1); const extra = all.length > prim.length;
   const inMore = !prim.includes(UI.view);
   const y = window.scrollY;
@@ -889,6 +955,41 @@ function render(fromSync) {
 function navCount() { const w = window.innerWidth; return w >= 1024 ? 7 : w >= 600 ? 6 : 4; }
 let lastNP = navCount();
 window.addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => { const n = navCount(); if (n !== lastNP) { lastNP = n; if (SES) render(true); } }, 150); });
+/* ---- Notificaciones push ---- */
+const pushOk = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const esApp = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const perfilKey = () => SES ? idAcceso(SES) : '';
+const pushActivo = () => { const p = LS.get('pocito_push'); return p && p.perfil === perfilKey() && 'Notification' in window && Notification.permission === 'granted'; };
+function pushEstado() { if (!pushOk()) return esIOS() && !esApp() ? 'agrega la app a la pantalla de inicio' : 'este navegador no los admite'; if (Notification.permission === 'denied') return 'bloqueados en el navegador'; return pushActivo() ? 'activos' : 'no activados'; }
+const b64u8 = b => { const p = '='.repeat((4 - b.length % 4) % 4), r = atob((b + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+async function activarAvisos() {
+  try {
+    if (!AUTH.get()) return toast('Vuelve a entrar con tu PIN (con internet) para activar los avisos');
+    const perm = await Notification.requestPermission(); if (perm !== 'granted') return toast('No se dio permiso para avisos');
+    const reg = await navigator.serviceWorker.ready;
+    const v = await fnCall('acceso', { accion: 'vapid' }); if (!v.ok || !v.j.publicKey) return toast('Los avisos aún no están configurados en el servidor');
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) { const k = sub.options && sub.options.applicationServerKey; if (k && btoa(String.fromCharCode(...new Uint8Array(k))) !== btoa(String.fromCharCode(...b64u8(v.j.publicKey)))) { await sub.unsubscribe(); sub = null; } }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u8(v.j.publicKey) });
+    const j = sub.toJSON(), c = syncCfg(), tok = await authToken();
+    const r = await fetch(c.url + '/rest/v1/push_subs', { method: 'POST', headers: { apikey: c.key, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, rol: SES.tipo === 'caseta' ? 'caseta' : SES.tipo, casa: SES.tipo === 'casa' ? SES.casa : null, vigilante_id: SES.tipo === 'caseta' ? SES.vigilanteId : null, ua: dispositivo() }) });
+    if (!r.ok) return toast('No se pudo registrar el dispositivo (' + r.status + ')');
+    LS.set('pocito_push', { endpoint: j.endpoint, perfil: perfilKey() }); logEv('Activó avisos', dispositivo()); render(); toast('Listo: este dispositivo recibirá avisos');
+  } catch (e) { toast('No se pudieron activar: ' + e.message); }
+}
+async function quitarSuscripcion() {
+  const p = LS.get('pocito_push'); if (!p || !syncCfg().url) return; LS.del('pocito_push');
+  try { const c = syncCfg(), tok = await authToken(); if (tok) await fetch(c.url + '/rest/v1/push_subs?endpoint=eq.' + encodeURIComponent(p.endpoint), { method: 'DELETE', headers: { apikey: c.key, Authorization: 'Bearer ' + tok } }); } catch (e) { }
+}
+function avisosCard() {
+  if (!SES || !syncCfg().url || !seguro()) return '';
+  if (pushActivo()) return '';
+  if (!pushOk()) return esIOS() && !esApp() ? `<div class="card avisoPush">${ic('sos')}<div><b>Recibe avisos en tu iPhone</b><div class="small muted">Toca el botón Compartir de Safari y elige "Agregar a pantalla de inicio". Abre la app desde ese ícono y aquí aparecerá el botón para activar los avisos.</div></div></div>` : '';
+  if (Notification.permission === 'denied') return `<div class="card avisoPush">${ic('sos')}<div><b>Los avisos están bloqueados</b><div class="small muted">Actívalos en los ajustes del navegador para este sitio.</div></div></div>`;
+  return `<div class="card avisoPush">${ic('sos')}<div style="flex:1"><b>Activa los avisos en este dispositivo</b><div class="small muted">${SES.tipo === 'casa' ? 'Te avisamos cuando confirmen tus pagos, llegue un paquete o una visita.' : SES.tipo === 'caseta' ? 'Te avisamos cuando una casa deje dinero, espere visita o haya una emergencia.' : 'Te avisamos de pagos por confirmar, solicitudes y emergencias.'}</div></div><button class="btn primary" onclick="activarAvisos()">Activar</button></div>`;
+}
 /* ---- Menús con blur ---- */
 function blurMenu(title, opts) {
   closeMenu(true);
@@ -1303,11 +1404,15 @@ V.sistema = () => {
       ${link ? `<p class="small mt">Enlace de instalación para los demás dispositivos (mándalo por WhatsApp a cada casa y ábrelo en la tableta):</p><input style="width:100%" readonly value="${esc(link)}" onclick="this.select()"><button class="btn sm mt" onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Enlace copiado'))">Copiar enlace</button>` : ''}</div>
   </div>
   <h3 class="mt">Casas, propietarios y PIN</h3>
-  ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Propietario', f: r => esc(r.propietario || '') }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => `<code>${esc(r.pin)}</code>` }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
+  ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Propietario', f: r => esc(r.propietario || '') }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => r.pin ? `<code>${esc(r.pin)}</code>` : (seguro() ? '<span class="tag ok">En la nube</span>' : '') }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
   <div class="grid2 mt">
     <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
     <div class="card"><h3>Pruebas</h3><p class="small muted">Carga datos de ejemplo para conocer la app. Bórralos antes de empezar a usarla en serio.</p><div class="row"><button class="btn" onclick="A.demo()">Cargar datos de ejemplo</button><button class="btn danger" onclick="A.borrarTodo()">Borrar datos de este dispositivo</button></div></div>
   </div>
+  <div class="card mt"><h3>Seguridad y avisos</h3>
+    <p class="small">${!sc.url ? 'Conecta la nube para activar el inicio de sesión seguro y las notificaciones.' : seguro() ? '<span class="tag ok">Inicio de sesión seguro activo</span> Los PIN se validan en el servidor; tras 5 intentos fallidos el acceso se bloquea 10 minutos.' : '<span class="tag warn">Aún no activo</span> Sigue la guía PASOS.md de la carpeta supabase y vuelve a entrar con tu PIN.'}</p>
+    ${seguro() ? `<p class="small muted">PIN que siguen guardados en dispositivos: <b>${db.all('casas').filter(c => c.pin).length + db.all('vigilantes').filter(v => v.pin).length + (cfg().pinSistema ? 1 : 0)}</b></p><div class="row"><button class="btn primary" onclick="A.migrarPins()">Pasar los PIN a la nube</button></div>` : ''}
+    <p class="small mt">Avisos en este dispositivo: <b>${pushEstado()}</b></p></div>
   <div class="card mt"><div class="row sp"><h3 style="margin:0">Respaldos automáticos</h3><button class="btn sm" onclick="A.respaldoAhora()">Respaldar ahora</button></div>
     <p class="small muted">Se guarda uno diario y otro antes de cada actualización (últimos 10, en este dispositivo). Las actualizaciones nunca borran datos; si algo faltara, aquí se recupera.</p>
     <div class="list mt" id="bklist">${BK_LIST.length ? BK_LIST.map(b => `<div class="item"><div><div class="t">${esc(b.motivo)}</div><div class="small muted">${fdt(b.fecha)} · ${b.n} registros</div></div><button class="btn sm" onclick="A.restaurarAuto('${b.key}')">Recuperar</button></div>`).join('') : '<p class="muted small">Aún no hay respaldos</p>'}</div></div>
@@ -1707,9 +1812,11 @@ A.vigilante = id => {
     { name: 'pagoDia', label: 'Pago por día de cobertura', type: 'number', value: v.pagoDia, help: 'Para reemplazos' },
     { name: 'ingreso', label: 'Fecha de ingreso', type: 'date', value: v.ingreso },
     { name: 'horario', label: 'Horario', value: v.horario, placeholder: 'Ej. 24x24, L-S 7 a 19' },
-    { name: 'pin', label: 'PIN de 4 dígitos para la tableta', value: v.pin || String(Math.floor(1000 + Math.random() * 9000)), maxlength: 4, inputmode: 'numeric', required: true },
+    { name: 'pin', label: seguro() && id ? 'Nuevo PIN (vacío = no cambiar)' : 'PIN de 4 dígitos para la tableta', value: seguro() && id ? '' : v.pin || String(Math.floor(1000 + Math.random() * 9000)), maxlength: 4, inputmode: 'numeric', required: !(seguro() && id) },
     { name: 'activo', label: 'Activo', type: 'checkbox', value: v.activo !== false }
-  ], x => { if (!/^\d{4}$/.test(x.pin)) return 'El PIN debe tener 4 números'; db.put('vigilantes', { ...v, ...x }); });
+  ], async x => { if (!/^\d{4}$/.test(x.pin) && !(seguro() && !x.pin && id)) return 'El PIN debe tener 4 números'; const rec = { ...v, ...x, id: v.id || uid() };
+    if (seguro() && x.pin) { const e = await savePin('vig:' + rec.id, x.pin); if (e) return e; rec.pin = ''; } else if (seguro()) rec.pin = v.pin || '';
+    db.put('vigilantes', rec); });
 };
 A.ausencia = (id, vid) => {
   const a = id ? db.get('ausencias', id) : { vigilanteId: vid || '', tipo: 'vacaciones', desde: today(), hasta: today() };
@@ -1998,10 +2105,11 @@ A.emergencia = n => openForm('Emergencia', [{ name: 'nota', label: '¿Qué pasa?
 A.atenderAlerta = id => { db.put('alertas', { ...db.get('alertas', id), atendida: true, atendidaPor: quien(), atendidaEn: new Date().toISOString() }); render(); };
 A.miCasa = n => { const c = casaRec(n); openForm('Mis datos · Casa ' + n, [
   { name: 'telefono', label: 'Teléfono', value: c.telefono, type: 'tel' },
-  { name: 'pin', label: 'Mi PIN', value: c.pin, maxlength: 4, inputmode: 'numeric' },
+  { name: 'pin', label: seguro() ? 'Nuevo PIN (vacío = no cambiar)' : 'Mi PIN', value: seguro() ? '' : c.pin, maxlength: 4, inputmode: 'numeric' },
   { name: 'emergencia', label: 'Contactos de emergencia (los ve caseta)', type: 'textarea', value: c.emergencia, placeholder: 'Nombre, parentesco, teléfono' },
   { name: 'notas', label: 'Indicaciones para caseta (opcional)', type: 'textarea', value: c.notas, placeholder: 'Solo lo que quieras compartir para una emergencia' }
-], v => { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+], async v => { if (seguro()) { if (v.pin) { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; const e = await savePin('casa:' + n, v.pin); if (e) return e; } db.put('casas', { ...c, ...v, pin: '' }); return; }
+  if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
 A.votar = (avisoId, opcion) => { db.put('votos', { id: avisoId + '_' + SES.casa, avisoId, casa: SES.casa, opcion }); render(); toast('Voto registrado: ' + opcion); };
 
 /* ---- Comunidad (admin) ---- */
@@ -2037,16 +2145,18 @@ A.config = () => { const c = cfg(); openForm('Configuración del condominio', [
   { name: 'cuota', label: 'Cuota mensual general', type: 'number', value: c.cuota },
   { name: 'casaAdmin', label: 'Casa que administra', type: 'select', options: casaOpts(), value: c.casaAdmin },
   { name: 'anio', label: 'Año en que inició el periodo', type: 'number', step: '1', value: c.anio, help: 'El periodo va del 1 de noviembre al 31 de octubre' },
-  { name: 'pinSistema', label: 'PIN del administrador del sistema', value: c.pinSistema, maxlength: 4, inputmode: 'numeric' }
-], v => { if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; setCfg({ ...v, casaAdmin: +v.casaAdmin }); }); };
+  { name: 'pinSistema', label: seguro() ? 'Nuevo PIN de Sistema (vacío = no cambiar)' : 'PIN del administrador del sistema', value: seguro() ? '' : c.pinSistema, maxlength: 4, inputmode: 'numeric' }
+], async v => { if (seguro()) { if (v.pinSistema) { if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; const e = await savePin('sistema', v.pinSistema); if (e) return e; } setCfg({ ...v, pinSistema: '', casaAdmin: +v.casaAdmin }); return; }
+  if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; setCfg({ ...v, casaAdmin: +v.casaAdmin }); }); };
 A.casa = n => { const c = casaRec(n); openForm('Casa ' + n, [
   { name: 'propietario', label: 'Propietario(s)', value: c.propietario }, { name: 'telefono', label: 'Teléfono', value: c.telefono, type: 'tel' },
-  { name: 'pin', label: 'PIN', value: c.pin, maxlength: 4, inputmode: 'numeric', required: true },
+  { name: 'pin', label: seguro() ? 'Nuevo PIN (vacío = no cambiar)' : 'PIN', value: seguro() ? '' : c.pin, maxlength: 4, inputmode: 'numeric', required: !seguro() },
   { name: 'cuota', label: 'Cuota propia (vacío = general)', type: 'number', value: c.cuota ?? '' },
   { name: 'emergencia', label: 'Contactos de emergencia', type: 'textarea', value: c.emergencia },
   { name: 'notas', label: 'Indicaciones para caseta', type: 'textarea', value: c.notas },
   { name: 'mayor', label: 'Requiere atención especial (adultos mayores, etc.)', type: 'checkbox', value: c.mayor }
-], v => { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+], async v => { if (seguro()) { if (v.pin) { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; const e = await savePin('casa:' + n, v.pin); if (e) return e; } db.put('casas', { ...c, ...v, pin: '' }); return; }
+  if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
 const SQL_SETUP = `create table if not exists registros (
   id text primary key,
   coleccion text not null,
@@ -2085,6 +2195,16 @@ A.syncConfig = () => { const c = syncCfg(); openForm('Conectar a Supabase', [
   await persistNow(); await sync();
 }, { wide: true, ok: 'Probar y conectar', toast: 'Conectado', intro: `<p class="small">1. Crea un proyecto gratis en supabase.com. 2. En <b>SQL Editor</b> corre este código una sola vez. 3. En <b>Project Settings → API</b> copia la URL y la clave pública.</p><code class="blk">${esc(SQL_SETUP)}</code><button type="button" class="btn sm mt" onclick="navigator.clipboard.writeText(SQL_SETUP).then(()=>toast('SQL copiado'))">Copiar SQL</button>` }); };
 A.desconectar = () => confirmar('¿Desconectar este dispositivo de la nube? Los datos locales se conservan.', () => { LS.del('pocito_sync'); syncState = { ok: null, msg: 'Modo local', busy: false, last: null }; }, 'Desconectar');
+A.migrarPins = () => confirmar('¿Pasar todos los PIN a la nube? Después ya no se guardan en los dispositivos y solo el servidor los valida.', async () => {
+  if (!AUTH.get()) return toast('Primero entra como Sistema con conexión a internet');
+  const tareas = [];
+  db.all('casas').forEach(c => { if (c.pin) tareas.push(['casa:' + c.num, c.pin, () => db.put('casas', { ...c, pin: '' })]); });
+  db.all('vigilantes').forEach(v => { if (v.pin) tareas.push(['vig:' + v.id, v.pin, () => db.put('vigilantes', { ...v, pin: '' })]); });
+  if (cfg().pinSistema) tareas.push(['sistema', cfg().pinSistema, () => setCfg({ pinSistema: '' })]);
+  let ok = 0, err = '';
+  for (const [id, pin, fin] of tareas) { const e = await savePin(id, pin); if (e) { err = e; break; } fin(); ok++; }
+  render(); toast(err ? 'Se detuvo: ' + err : ok + ' PIN pasados a la nube');
+}, 'Pasar a la nube');
 A.respaldoAhora = async () => { await autoBackup(true); toast('Respaldo guardado en este dispositivo'); render(); };
 A.restaurarAuto = async key => { const d = await IDB.get(key); if (!d || !d.cols) return toast('Respaldo no disponible');
   confirmar('¿Recuperar este respaldo? Solo se agregan los registros que falten o sean más recientes; no se borra nada actual.', async () => { let n = 0; LOG_OFF = true;
@@ -2154,13 +2274,15 @@ async function init() {
   await autoBackup();
   ensureBase();
   SES = LS.get('pocito_ses');
+  const vq = p.get('vista'); if (vq) { UI.view = vq; history.replaceState(null, '', location.pathname); }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.vista && SES) go(e.data.vista); else sync(); });
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
   if (syncCfg().integrada && !LS.get('pocito_int')) { if (S.demo) S.dirty = {}; S.lastPull = null; LS.set('pocito_int', 1); }
   if (SES && SES.tipo === 'caseta' && !db.get('vigilantes', SES.vigilanteId)) SES = null;
   let spl = true; try { spl = !sessionStorage.getItem('pocito_spl'); sessionStorage.setItem('pocito_spl', '1'); } catch (e) { }
   if (spl) { const sp = document.createElement('div'); sp.className = 'splash'; sp.innerHTML = `<div class="lg">${LOGO_SVG}<b>el pocito</b></div>`; document.body.appendChild(sp); setTimeout(() => sp.remove(), 1900); }
   render();
-  if (syncCfg().url) { syncState.msg = 'Conectando…'; await sync(); }
+  if (syncCfg().url) { cargarPerfiles(); syncState.msg = 'Conectando…'; await sync(); }
   setInterval(() => { if (!document.hidden) sync(); }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
