@@ -366,8 +366,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '2.7';
+const APP_VER = '2.8';
 const NOVEDADES = [
+  ['2.8', 'Aviso de pago duplicado entre casa y caseta · Catálogo de pagos de caseta con atajos · Pagos programados (semanal, cada 2 semanas, mensual o única vez) que la caseta ve y actualiza'],
   ['2.7', 'Dinero en caseta visible en el inicio del vigilante por concepto · Casas pueden dar dinero a la caseta para pagar gastos · Adelantos del administrador a caseta con catálogo de conceptos'],
   ['2.6', 'Inicio de casa simplificado · Pago de cuotas en efectivo a vigilante o administrador con doble confirmación · Saldo con pago en espera · Próximo pago y cuotas extraordinarias · Gasto del condominio con reembolso o a cuenta'],
   ['2.5', 'Conexión a la nube integrada: todos los dispositivos sincronizan solos · Aviso visible si un dispositivo no está conectado · Descarga completa de la nube en cada actualización'],
@@ -378,7 +379,7 @@ const NOVEDADES = [
   ['2.0', 'Nuevo diseño · Modo claro y oscuro · Letra grande · Montos en $ · Periodo de administración nov–oct']
 ];
 const COLS = ['config','casas','cargos','abonos','ingresos','gastos','transferencias','vigilantes','ausencias','turnos',
-  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs','reservas'];
+  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs','reservas','destinos'];
 const CUENTAS = { banco: 'Cuenta bancaria', chica: 'Caja chica', vigilante: 'Fondo caseta' };
 const CATS = ['Vigilancia (nómina)','Coberturas / reemplazos','Basura','Jardinería','CFE (luz)','Agua','Mantenimiento',
   'Limpieza','Administración / papelería','Extraordinario','Otros'];
@@ -441,7 +442,7 @@ async function autoBackup(force) {
 }
 /* ============ Bitácora del sistema ============ */
 let LOG_OFF = false;
-const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común' };
+const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común', destinos: 'pago programado de caseta' };
 function dispositivo() { const u = navigator.userAgent; return /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android' : 'Tableta Android') : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : 'Otro'; }
 function logEv(accion, detalle = '', tipo = 'acceso') {
   try { db.put('logs', { fecha: new Date().toISOString(), quien: SES ? quien() : 'Sin sesión', accion, detalle: String(detalle).slice(0, 200), tipo, disp: dispositivo(), ver: APP_VER }); } catch (e) { }
@@ -1146,6 +1147,8 @@ V.cajas = () => {
   return `<div class="sect"><h2>Cajas</h2><div class="row"><button class="btn primary" onclick="A.transferencia()">Mover dinero entre cajas</button><button class="btn" onclick="A.adelantoCaseta()">Adelantar dinero a caseta</button><button class="btn" onclick="A.ingreso()">Otro ingreso / saldo inicial</button></div></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => `<div class="card kpi" style="cursor:pointer;${k === cur ? 'outline:2px solid var(--brand-2)' : ''}" onclick="setSub('cajas','${k}')"><div class="lbl">${CUENTAS[k]}</div><div class="val">${money(saldoCuenta(k))}</div><div class="small muted">Ver movimientos</div></div>`).join('')}</div>
   <div class="grid2"><div>${dineroCasetaHtml()}</div><div class="card"><div class="row sp"><h3 style="margin:0">Conceptos para caseta</h3><button class="btn sm" onclick="A.catalogoCaseta()">Editar catálogo</button></div><p class="small muted">Elige uno al adelantar dinero. La caseta lo paga al destino conforme se necesite.</p><div class="row" style="gap:.4rem">${conceptosCaseta().map(c => `<button class="tag" style="border:0;cursor:pointer" onclick="A.adelantoCaseta('${esc(c)}')">+ ${esc(c)}</button>`).join('')}</div></div></div>
+  <div class="mt">${pagosCasetaHtml()}</div>
+  ${(() => { const ds = db.all('destinos'); return ds.length ? `<div class="card mt"><h3>Todos los pagos programados</h3><div class="list">${ds.map(d => `<div class="item"><div><div class="t">${esc(d.concepto)} · ${esc(d.destino || '')} · ${money(d.monto)}</div><div class="small muted">${freqTxt(d)}${d.actualizadoPor ? ' · actualizó ' + esc(d.actualizadoPor) : ''}</div>${d.activo === false ? '<span class="tag">Inactivo</span>' : ''}</div><div class="row"><button class="btn sm" onclick="A.destino('${d.id}')">Editar</button><button class="btn sm ghost" onclick="A.borrar('destinos','${d.id}')">Borrar</button></div></div>`).join('')}</div></div>` : ''; })()}
   <h3 class="mt">Movimientos · ${CUENTAS[cur]}</h3>
   ${cur === 'vigilante' ? '<p class="small muted">El fondo de caseta es el dinero que tienen los vigilantes para pagar la basura, el jardinero y gastos menores. Cada pago que registran aparece aquí con su comprobante.</p>' : ''}
   ${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) + (x.g && x.g.registradoPor ? `<div class="small muted">Registró: ${esc(x.g.registradoPor)}</div>` : '') }, { h: 'Entrada', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salida', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}
@@ -1394,6 +1397,7 @@ V.c_visitas = () => {
   const hoyV = sortBy(db.all('visitas').filter(v => String(v.entrada).slice(0, 10) === hoy), 'entrada');
   return `<div class="row mt"><button class="btn primary lg" onclick="A.entrada()">+ Registrar entrada</button><button class="btn lg" onclick="A.paquete()">+ Recibir paquete</button><button class="btn lg" onclick="A.incidencia('caseta')">Reportar problema</button></div>
   <div class="mt">${dineroCasetaHtml()}</div>
+  <div class="mt">${pagosCasetaHtml()}</div>
   <div class="grid2 mt">
     <div class="card"><h3>Esperados hoy</h3>${esper.length ? `<div class="list">${esper.map(p => `<div class="item"><div><div class="t">${esc(p.nombre)}</div><div class="small muted">Casa ${p.casa} ${esc(p.nota || '')}</div></div><button class="btn primary" onclick="A.entrada(null,'${p.id}')">Llegó</button></div>`).join('')}</div>` : '<p class="muted">Nadie avisó visitas para hoy.</p>'}</div>
     <div class="card"><h3>Dentro del condominio</h3>${dentro.length ? `<div class="list">${dentro.map(v => `<div class="item"><div><div class="t">${esc(v.nombre)}</div><div class="small muted">Casa ${v.casa} · ${esc(v.tipo)} · entró ${ftime(v.entrada)} ${esc(v.placas || '')}</div></div><button class="btn primary" onclick="A.salida('${v.id}')">Salió</button></div>`).join('')}</div>` : '<p class="muted">No hay visitas dentro.</p>'}</div>
@@ -1410,7 +1414,8 @@ V.c_caja = () => {
   const serv = db.all('servicios').filter(s => s.responsable === 'caseta');
   const porEnt = sum(db.all('abonos').filter(a => a.estado === 'con_vigilante' || a.estado === 'aviso_vigilante'));
   return `<div class="kpis">${kpi('Fondo de caseta', money(saldoCuenta('vigilante')), saldoCuenta('vigilante') < 0 ? 'bad' : '')}${kpi('Cobros por entregar al admin', money(porEnt), porEnt > 0 ? 'warn' : '')}</div>
-  <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Basura')">Pagar basura</button><button class="btn primary lg" onclick="A.pagoCaseta('Jardinería')">Pagar jardinero</button><button class="btn lg" onclick="A.pagoCaseta('Otros')">Otro pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
+  <div class="row"><button class="btn primary lg" onclick="A.pagoCaseta('Otros')">Registrar un pago</button><button class="btn lg" onclick="A.transferencia('vigilante','chica',true)">Devolver dinero</button></div>
+  <div class="mt">${pagosCasetaHtml()}</div>
   <div class="mt">${dineroCasetaHtml()}</div>
   ${serv.length ? `<div class="card mt"><h3>Pagos a cargo de caseta</h3>${serv.map(s => { const e = estadoServicio(s); return `<div class="row sp" style="margin:.35rem 0"><span><b>${esc(s.nombre)}</b> ${money(s.monto)} ${esc(s.frecuencia)}</span><span class="row"><span class="tag ${e.cls}">${e.txt}</span><button class="btn sm primary" onclick="A.pagoCaseta('${esc(s.categoria)}','${s.id}')">Pagar</button></span></div>`; }).join('')}</div>` : ''}
   <h3 class="mt">Movimientos del fondo</h3>${table([{ h: 'Fecha', f: x => fdate(x.fecha) }, { h: 'Concepto', f: x => esc(x.concepto) }, { h: 'Entró', num: 1, f: x => x.ent ? money(x.ent) : '' }, { h: 'Salió', num: 1, f: x => x.sal ? money(x.sal) : '' }, { h: 'Saldo', num: 1, f: x => money(x.saldo) }, { h: '', f: x => x.g ? fileBtn(x.g.comprobante) : '' }], mv, null, 'Sin movimientos')}`;
@@ -1491,7 +1496,7 @@ function cuentaCasa(n) {
   const prox0 = prox; if (cubre) prox = isoDate(new Date(+prox.slice(0, 4), +prox.slice(5, 7) - 1 + cubre, 1)).slice(0, 7);
   return { saldo: saldoCasa(n), pend: sum(pendAb), pendAb, deb, prox, prox0, cubre, cuota, efectivo };
 }
-const CONC_DEF = ['Limpieza de callejón', 'Desazolve de techo', 'Limpieza Pocito', 'Compra de materiales', 'Jardinería', 'Otros'];
+const CONC_DEF = ['Basura', 'Jardinería', 'Limpieza de callejón', 'Desazolve de techo', 'Limpieza Pocito', 'Compra de materiales', 'Otros'];
 const conceptosCaseta = () => (cfg().conceptosCaseta && cfg().conceptosCaseta.length ? cfg().conceptosCaseta : CONC_DEF);
 const catDe = c => /jard/i.test(c) ? 'Jardinería' : /basura/i.test(c) ? 'Basura' : /limpi/i.test(c) ? 'Limpieza' : /desazolve|material|repar|manten/i.test(c) ? 'Mantenimiento' : /luz|cfe/i.test(c) ? 'CFE (luz)' : /agua/i.test(c) ? 'Agua' : 'Otros';
 function fondoConceptos() {
@@ -1500,6 +1505,18 @@ function fondoConceptos() {
   const xs = names.map(c => { const asig = sum(tr.filter(t => t.a === 'vigilante' && t.conceptoFondo === c)) - sum(tr.filter(t => t.de === 'vigilante' && t.conceptoFondo === c)); const pag = sum(gs.filter(g => g.conceptoFondo === c)); return { c, asig, pag, disp: asig - pag }; }).filter(x => x.asig || x.pag);
   const general = saldoCuenta('vigilante') - sum(xs, x => x.disp);
   return { xs, general };
+}
+let FORCE_DUP = false;
+const dupAbono = (casa, monto) => db.all('abonos').find(a => a.casa == casa && Math.abs(num(a.monto) - num(monto)) < 0.01 && PEND.includes(a.estado));
+function dupModal(d, alConfirmar) {
+  const quienReg = d.origen === 'casa' ? 'la propia casa' : (d.registradoPor || 'la caseta');
+  const m = modal(`<h3>${ic('alert')} Este pago ya está registrado</h3>
+    <p>Hay un pago de <b>Casa ${d.casa}</b> por <b>${money(d.monto)}</b> registrado por <b>${esc(quienReg)}</b> el ${fdt(d.recibidoEn || d.creado || d.fecha)}${d.recibidoPor ? ' (recibió ' + esc(d.recibidoPor) + ')' : ''}.</p>
+    <p class="small muted">Estatus: ${tagEstado(d.estado)} · todavía no lo confirma el administrador. ¿Es el mismo pago?</p>
+    <div class="mact" style="flex-wrap:wrap">${alConfirmar ? `<button class="btn primary" id="dupSame">Es el mismo: confirmar que lo recibí</button>` : ''}<button class="btn" id="dupCancel">Es el mismo: cancelar</button><button class="btn danger" id="dupForce">Es otro pago: registrarlo</button></div>`);
+  m.querySelector('#dupCancel').onclick = () => { closeModal(); closeModal(); toast('Operación cancelada, no se duplicó'); };
+  m.querySelector('#dupForce').onclick = () => { closeModal(); FORCE_DUP = true; setTimeout(() => { const b = $('#mfok'); if (b) { b.disabled = false; b.click(); } }, 60); };
+  if (alConfirmar) m.querySelector('#dupSame').onclick = () => { closeModal(); closeModal(); alConfirmar(); render(); };
 }
 const vigOrden = () => sortBy(db.all('vigilantes').filter(v => v.activo !== false), 'nombre', false).sort((a, b) => (a.rol === 'reemplazo') - (b.rol === 'reemplazo'));
 A.pagoCasa = n => {
@@ -1523,6 +1540,7 @@ A.pagoCasa = n => {
     if (!(v.monto > 0)) return 'Escribe el monto';
     const concepto = v.concepto === 'otro' ? (v.notaOtro || 'Otro pago') : v.concepto;
     if (v.concepto === 'otro' && !v.notaOtro) return 'Describe el pago';
+    if (!FORCE_DUP) { const d = dupAbono(n, v.monto); if (d) { dupModal(d); return 'Ya hay un pago igual registrado'; } } FORCE_DUP = false;
     const base = { casa: n, fecha: v.fecha, monto: v.monto, concepto, nota: concepto, comprobante: v.comprobante, registradoPor: quien(), origen: 'casa' };
     if (isAdmin()) { db.put('abonos', { ...base, metodo: v.metodo, cuenta: metodoCuenta(v.metodo), estado: 'confirmado', confirmadoPor: quien(), confirmadoEn: new Date().toISOString() }); return; }
     if (v.metodo === 'Efectivo' && v.aQuien === 'vigilante') {
@@ -1785,25 +1803,29 @@ function misPaquetesHtml(n, todos) {
   return `<div class="list">${pend.map(p => `<div class="item"><div><div class="t">${ic('box')} ${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Llegó ${fdt(p.recibido)} · recibió ${esc(vigName(p.vigilanteId))}</div><div style="margin-top:.3rem"><span class="tag warn">En caseta</span></div></div><div class="row">${p.foto ? fileBtn(p.foto) : ''}<button class="btn sm primary" onclick="A.recibiPaquete('${p.id}')">Ya lo tengo</button></div></div>`).join('')}
     ${ent.map(p => `<div class="item"><div><div class="t">${esc(p.empresa || 'Paquete')} <span class="muted" style="font-weight:500">${esc(p.descripcion || '')}</span></div><div class="small muted">Entregado ${fdt(p.entregado)} a ${esc(p.entregadoA || '')} · ${esc(paqQuien(p))}</div></div><span class="tag ok">Entregado</span></div>`).join('')}</div>`;
 }
-A.pagoCaseta = (cat, servId, desdeAdmin, concF) => {
+A.pagoCaseta = (cat, servId, desdeAdmin, concF, pre = {}) => {
   const s = servId ? db.get('servicios', servId) : null;
+  const dst = pre.destinoId ? db.get('destinos', pre.destinoId) : null;
   const fc = fondoConceptos(), cOpts = fc.xs.filter(x => x.disp > 0.009);
-  const catOk = CATS.includes(cat) ? cat : (cat === 'Basura' ? 'Basura' : cat === 'Jardinería' ? 'Jardinería' : 'Otros');
-  openForm('Pago con el fondo de caseta', [
-    ...(cOpts.length ? [{ name: 'conceptoFondo', label: '¿De qué dinero sale?', type: 'select', options: [...cOpts.map(x => [x.c, x.c + ' · disponible ' + money(x.disp)]), ['', 'Fondo general · ' + money(fc.general)]], value: concF || '', full: true }] : []),
-    { name: 'concepto', label: 'Concepto', value: concF ? concF :  s ? s.nombre : catOk === 'Basura' ? 'Recolección de basura' : catOk === 'Jardinería' ? 'Pago a jardinero' : '', required: true, full: true },
-    { name: 'monto', label: 'Monto', type: 'number', value: s ? s.monto : '', required: true },
-    { name: 'proveedor', label: '¿A quién se le pagó?', value: s ? s.proveedor : '' },
+  const cs = conceptosCaseta();
+  const cc0 = pre.conceptoCat || (dst && dst.concepto) || concF || (cat && cs.find(c => c.toLowerCase().startsWith(String(cat).toLowerCase().slice(0, 5)))) || (s && cs.find(c => catDe(c) === s.categoria)) || 'Otros';
+  const fondoDef = cOpts.find(x => x.c === (concF || cc0)) ? (concF || cc0) : '';
+  openForm(dst ? 'Pagar · ' + dst.concepto + (pre.fechaProg ? ' (' + fdate(pre.fechaProg) + ')' : '') : 'Pago con el fondo de caseta', [
+    { name: 'conceptoCat', label: '¿Qué se paga?', type: 'select', options: [...new Set([...cs, cc0])].map(c => [c, c]), value: cc0 },
+    ...(cOpts.length ? [{ name: 'conceptoFondo', label: '¿De qué dinero sale?', type: 'select', options: [...cOpts.map(x => [x.c, x.c + ' · disponible ' + money(x.disp)]), ['', 'Fondo general · ' + money(fc.general)]], value: fondoDef, full: true }] : []),
+    { name: 'concepto', label: 'Descripción', value: dst ? dst.concepto + (pre.fechaProg ? ' · ' + fdate(pre.fechaProg) : '') : s ? s.nombre : cc0, required: true, full: true },
+    { name: 'monto', label: 'Monto', type: 'number', value: dst ? dst.monto : s ? s.monto : '', required: true },
+    { name: 'proveedor', label: '¿A quién se le pagó?', value: dst ? dst.destino : s ? s.proveedor : '' },
     { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
     { name: 'comprobante', label: 'Foto del recibo o ticket', type: 'file', full: true }
   ], v => {
     if (!(v.monto > 0)) return 'Escribe el monto';
     const cF = v.conceptoFondo || ''; const x = cF ? cOpts.find(o => o.c === cF) : null;
     if (x && v.monto > x.disp + 0.001) return 'Para ' + cF + ' solo hay ' + money(x.disp);
-    db.put('gastos', { ...v, conceptoFondo: cF, categoria: cF ? catDe(cF) : catOk, cuenta: 'vigilante', estado: 'aprobado', servicioId: servId || '', registradoPor: quien() });
-    const resto = saldoCuenta('vigilante');
-    if (resto < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
-  }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b></p>`, toast: 'Pago registrado' });
+    db.put('gastos', { ...v, conceptoFondo: cF, categoria: catDe(v.conceptoCat), cuenta: 'vigilante', estado: 'aprobado', servicioId: servId || '', destinoId: dst ? dst.id : '', fechaProg: pre.fechaProg || '', noProgramado: !dst, registradoPor: quien() });
+    if (saldoCuenta('vigilante') < 0) setTimeout(() => toast('El fondo quedó en negativo: avisa al administrador'), 100);
+  }, { intro: `<p class="small muted">Dinero disponible en caseta: <b>${money(saldoCuenta('vigilante'))}</b>${dst ? '' : '. Si no estaba programado, se registra como pago no programado y el administrador lo verá.'}</p>`, toast: 'Pago registrado',
+    onLive: f => { if (f.elements.conceptoFondo && f.dataset.lc !== f.elements.conceptoCat.value) { f.dataset.lc = f.elements.conceptoCat.value; if (cOpts.find(o => o.c === f.elements.conceptoCat.value)) f.elements.conceptoFondo.value = f.elements.conceptoCat.value; } } });
 };
 A.adelantoCaseta = (conc) => {
   const cs = conceptosCaseta();
@@ -1811,14 +1833,21 @@ A.adelantoCaseta = (conc) => {
     { name: 'conceptoFondo', label: 'Concepto', type: 'select', options: [...cs.map(c => [c, c]), ['', 'Fondo general (basura, jardinero, menores)']], value: conc ?? cs[0] },
     { name: 'monto', label: 'Monto', type: 'number', required: true },
     { name: 'de', label: 'Sale de', type: 'select', options: cuentaOpts(['chica', 'banco']).map(([k, l]) => [k, l + ' · ' + money(saldoCuenta(k))]) },
-    { name: 'destino', label: '¿A quién se le pagará?', placeholder: 'Ej. Don Pepe (desazolve)' },
-    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'destino', label: 'Destino (a quién se le pagará)', placeholder: 'Ej. Don Pepe (desazolve)' },
+    { name: 'fecha', label: 'Fecha del adelanto', type: 'date', value: today() },
+    { name: 'frecuencia', label: '¿Cuándo se paga?', type: 'select', options: [['unica', 'Una vez en el mes (sin fecha fija)'], ['semanal', 'Cada semana'], ['quincenal', 'Cada 2 semanas'], ['mensual', 'Cada mes'], ['', 'No programar']], value: 'unica' },
+    { name: 'dia', label: 'Día de la semana', type: 'select', options: DIAS.map((x, i) => [String(i), x]), value: '6' },
+    { name: 'diaMes', label: 'Día del mes', type: 'number', step: '1' },
+    { name: 'desde', label: 'Primer pago (fecha)', type: 'date', value: today() },
+    { name: 'montoPago', label: 'Monto por pago', type: 'number', help: 'Vacío = el monto completo del adelanto' },
     { name: 'nota', label: 'Indicaciones para el vigilante', full: true, placeholder: 'Ej. pagar cuando termine el trabajo, pedir recibo' }
   ], v => { if (!(v.monto > 0)) return 'Escribe el monto'; if (v.monto > saldoCuenta(v.de) + 0.001) return CUENTAS[v.de] + ' solo tiene ' + money(saldoCuenta(v.de));
+    if (v.frecuencia && v.destino) db.put('destinos', { concepto: v.conceptoFondo || 'Otros', destino: v.destino, monto: v.montoPago || v.monto, frecuencia: v.frecuencia, dia: v.frecuencia === 'semanal' ? v.dia : v.frecuencia === 'mensual' ? (v.diaMes || 1) : '', desde: v.frecuencia === 'unica' ? v.fecha : v.desde, mes: v.frecuencia === 'unica' ? ym(v.fecha) : '', nota: v.nota, activo: true, creadoPor: quien() });
     db.put('transferencias', { de: v.de, a: 'vigilante', monto: v.monto, fecha: v.fecha, conceptoFondo: v.conceptoFondo, destino: v.destino, nota: (v.conceptoFondo || 'Fondo general') + (v.destino ? ' · para ' + v.destino : '') + (v.nota ? ' · ' + v.nota : ''), indicaciones: v.nota, porRecibir: true, registradoPor: quien() });
   }, { ok: 'Adelantar', toast: 'Adelanto registrado. La caseta lo verá en su inicio',
     intro: '<p class="small muted">El vigilante de turno recibe el dinero y lo va pagando al destino conforme se necesite. Cada pago queda con su comprobante.</p>',
-    validate: v => v.monto != null && v.monto > saldoCuenta(v.de) + 0.001 ? CUENTAS[v.de] + ' solo tiene ' + money(saldoCuenta(v.de)) : '' });
+    validate: v => v.monto != null && v.monto > saldoCuenta(v.de) + 0.001 ? CUENTAS[v.de] + ' solo tiene ' + money(saldoCuenta(v.de)) : '',
+    onLive: f => { const fr = f.elements.frecuencia.value, sh = (n, on) => { const el = f.elements[n]; if (el) el.closest('.fld').style.display = on ? '' : 'none'; }; sh('dia', fr === 'semanal'); sh('diaMes', fr === 'mensual'); sh('desde', fr === 'semanal' || fr === 'quincenal' || fr === 'mensual'); sh('montoPago', !!fr); } });
 };
 A.recibiAdelanto = id => { const t = db.get('transferencias', id); confirmar(`¿Recibiste ${money(t.monto)} para ${t.conceptoFondo || 'el fondo general'}?`, () => { db.put('transferencias', { ...t, porRecibir: false, recibidoPor: quien(), recibidoEn: new Date().toISOString() }); toast('Confirmado'); }, 'Sí, lo recibí'); };
 A.catalogoCaseta = () => openForm('Catálogo de conceptos para caseta', [{ name: 'lista', label: 'Un concepto por renglón', type: 'textarea', value: conceptosCaseta().join('\n'), full: true }], v => { const l = v.lista.split('\n').map(x => x.trim()).filter(Boolean); if (!l.length) return 'Escribe al menos uno'; setCfg({ conceptosCaseta: l }); }, { toast: 'Catálogo actualizado' });
@@ -1848,6 +1877,61 @@ function dineroCasetaHtml() {
     ${isCaseta() ? `<div class="row mt"><button class="btn" onclick="A.cobroCaseta()">${ic('cash')} Recibir dinero de una casa</button></div>` : ''}
   </div>`;
 }
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const FREQ = { semanal: 'Cada semana', quincenal: 'Cada 2 semanas', mensual: 'Cada mes', unica: 'Una sola vez' };
+function freqTxt(d) { return d.frecuencia === 'semanal' ? 'Cada ' + DIAS[+d.dia] : d.frecuencia === 'quincenal' ? 'Cada 2 ' + DIAS[toDate(d.desde).getDay()] + (/s$/.test(DIAS[toDate(d.desde).getDay()]) ? '' : 's') + ' (desde ' + fdate(d.desde) + ')' : d.frecuencia === 'mensual' ? 'Cada mes, día ' + d.dia : 'Una vez en ' + mesLabel(d.mes || ym(d.desde || today())); }
+function ocurrencias(d, mes) {
+  const [y, m] = mes.split('-').map(Number), last = new Date(y, m, 0).getDate(), out = [];
+  if (d.frecuencia === 'semanal') { for (let k = 1; k <= last; k++) { const f = isoDate(new Date(y, m - 1, k)); if (new Date(y, m - 1, k).getDay() === +d.dia && (!d.desde || f >= d.desde)) out.push(f); } }
+  else if (d.frecuencia === 'quincenal' && d.desde) { const a = toDate(d.desde); for (let k = 1; k <= last; k++) { const dt = new Date(y, m - 1, k); const diff = Math.round((dt - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5); if (diff >= 0 && diff % 14 === 0) out.push(isoDate(dt)); } }
+  else if (d.frecuencia === 'mensual') { const k = Math.min(+d.dia || 1, last); const f = isoDate(new Date(y, m - 1, k)); if (!d.desde || f >= d.desde) out.push(f); }
+  else if (d.frecuencia === 'unica') { if ((d.mes || ym(d.desde || today())) === mes) out.push(null); }
+  return out;
+}
+function pagosDelMes(mes = ym()) {
+  const gs = gastosValidos().filter(g => g.destinoId);
+  const xs = [];
+  db.all('destinos').filter(d => d.activo !== false).forEach(d => ocurrencias(d, mes).forEach(f => {
+    const g = gs.find(x => x.destinoId === d.id && (f ? x.fechaProg === f : true));
+    xs.push({ d, f, g, est: g ? 'pagado' : !f ? 'mes' : f < today() ? 'vencido' : f === today() ? 'hoy' : 'prox' });
+  }));
+  return xs.sort((a, b) => (a.f || mes + '-99') < (b.f || mes + '-99') ? -1 : 1);
+}
+const EST_P = { pagado: '<span class="tag ok">Pagado</span>', vencido: '<span class="tag bad">Vencido</span>', hoy: '<span class="tag warn">Hoy</span>', prox: '<span class="tag">Próximo</span>', mes: '<span class="tag brand">En el mes</span>' };
+function pagosCasetaHtml() {
+  const mes = ym(), xs = pagosDelMes(mes);
+  const prog = sum(xs, x => num(x.d.monto)), pag = sum(xs.filter(x => x.g), x => num(x.g.monto));
+  const extra = gastosValidos().filter(g => g.cuenta === 'vigilante' && !g.destinoId && ym(g.fecha) === mes);
+  return `<div class="card"><div class="row sp"><h3 style="margin:0">${ic('clock')} Pagos de caseta · ${mesLabel(mes)}</h3>${isAdmin() ? `<button class="btn sm" onclick="A.destino()">+ Programar</button>` : ''}</div>
+    <div class="small muted" style="margin:.3rem 0 .6rem">Programado ${money(prog)} · pagado ${money(pag)} · falta ${money(Math.max(0, prog - pag))}</div>
+    ${xs.length ? `<div class="list">${xs.map(x => `<div class="item"><div style="min-width:0"><div class="t">${x.f ? fdate(x.f) : 'Este mes'} · ${esc(x.d.concepto)}</div><div class="small muted">${esc(x.d.destino || '')}${x.d.destino ? ' · ' : ''}${money(x.d.monto)} · ${freqTxt(x.d)}${x.d.nota ? ' · ' + esc(x.d.nota) : ''}</div><div style="margin-top:.3rem">${EST_P[x.est]}${x.g ? ` <span class="small muted">${fdate(x.g.fecha)} · ${esc(x.g.registradoPor || '')}</span>` : ''}</div></div>
+      <div class="row">${!x.g && isCaseta() ? `<button class="btn sm primary" onclick="A.pagoCaseta(null,null,false,null,{destinoId:'${x.d.id}',fechaProg:'${x.f || ''}'})">Pagar</button>` : ''}${isCaseta() || isAdmin() ? `<button class="btn sm ghost" onclick="A.destino('${x.d.id}')">Editar</button>` : ''}</div></div>`).join('')}</div>` : '<p class="small muted">No hay pagos programados este mes.</p>'}
+    ${extra.length ? `<div class="dsh mt">Pagos no programados este mes</div><div class="list">${extra.map(g => `<div class="item"><div><div class="t">${fdate(g.fecha)} · ${esc(g.conceptoCat || g.categoria)} · ${money(g.monto)}</div><div class="small muted">${esc(g.concepto || '')}${g.proveedor ? ' · ' + esc(g.proveedor) : ''} · ${esc(g.registradoPor || '')}</div></div>${fileBtn(g.comprobante)}</div>`).join('')}</div>` : ''}
+    ${isCaseta() ? `<div class="dsh mt">Atajos para pagar</div><div class="row" style="gap:.4rem">${conceptosCaseta().map(c => `<button class="btn sm" onclick="A.pagoCaseta(null,null,false,null,{conceptoCat:'${esc(c)}'})">${esc(c)}</button>`).join('')}</div>` : ''}</div>`;
+}
+A.destino = (id, pre = {}) => {
+  const d = id ? db.get('destinos', id) : { frecuencia: 'unica', mes: ym(), ...pre };
+  const soloCaseta = isCaseta();
+  openForm(id ? 'Pago programado de caseta' : 'Programar pago de caseta', [
+    { name: 'concepto', label: 'Concepto', type: 'select', options: [...new Set([...conceptosCaseta(), d.concepto].filter(Boolean))].map(c => [c, c]), value: d.concepto },
+    { name: 'destino', label: 'Destino (a quién se paga)', value: d.destino, required: true, placeholder: 'Ej. Pedro (jardinero)' },
+    { name: 'monto', label: 'Monto por pago', type: 'number', value: d.monto, required: true },
+    { name: 'frecuencia', label: '¿Cada cuándo?', type: 'select', options: Object.entries(FREQ), value: d.frecuencia },
+    { name: 'dia', label: 'Día de la semana', type: 'select', options: DIAS.map((x, i) => [String(i), x]), value: d.dia ?? '6' },
+    { name: 'diaMes', label: 'Día del mes', type: 'number', step: '1', value: d.frecuencia === 'mensual' ? d.dia : '' },
+    { name: 'desde', label: 'Primer pago (fecha)', type: 'date', value: d.desde || today() },
+    { name: 'mes', label: 'Mes', type: 'month', value: d.mes || ym() },
+    { name: 'nota', label: 'Indicaciones', value: d.nota, full: true, placeholder: 'Ej. pedir recibo firmado' },
+    ...(id && !soloCaseta ? [{ name: 'activo', label: 'Activo', type: 'checkbox', value: d.activo !== false }] : [])
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    const rec = { ...d, concepto: v.concepto, destino: v.destino, monto: v.monto, frecuencia: v.frecuencia, nota: v.nota, desde: v.desde, mes: v.frecuencia === 'unica' ? v.mes : '', dia: v.frecuencia === 'mensual' ? (parseMoney(v.diaMes) || 1) : v.frecuencia === 'semanal' ? v.dia : '', activo: id && !soloCaseta ? v.activo : d.activo !== false, actualizadoPor: quien() };
+    db.put('destinos', rec);
+  }, { toast: id ? 'Actualizado' : 'Pago programado', intro: soloCaseta ? '<p class="small muted">Puedes actualizar el destino, monto o fechas. El administrador verá el cambio.</p>' : '',
+    onLive: f => { const fr = f.elements.frecuencia.value, sh = (n, on) => { const el = f.elements[n]; if (el) el.closest('.fld').style.display = on ? '' : 'none'; };
+      sh('dia', fr === 'semanal'); sh('diaMes', fr === 'mensual'); sh('desde', fr !== 'unica'); sh('mes', fr === 'unica');
+      const lb = f.elements.desde && f.elements.desde.closest('.fld').querySelector('span'); if (lb) lb.textContent = fr === 'quincenal' ? 'Primer pago (define el día, ej. un martes)' : 'A partir de'; } });
+};
 A.salirCaseta = () => confirmar('¿Salir al menú principal? Tu turno sigue abierto; para cerrarlo usa "Entregar turno".', () => logout(), 'Salir');
 A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
   { name: 'casa', label: 'Casa', type: 'select', options: casaOpts('Elige la casa'), value: casa || '', required: true },
@@ -1857,6 +1941,7 @@ A.cobroCaseta = (casa) => openForm('Recibir dinero de una casa', [
   { name: 'comprobante', label: 'Foto del dinero o recibo (opcional)', type: 'file', full: true }
 ], v => {
   if (!(v.monto > 0)) return 'Escribe el monto';
+  if (!FORCE_DUP) { const d = dupAbono(+v.casa, v.monto); if (d) { dupModal(d, d.estado === 'aviso_vigilante' && isCaseta() ? () => { db.put('abonos', { ...d, estado: 'con_vigilante', vigConfirmadoPor: quien(), vigConfirmadoEn: new Date().toISOString() }); toast('Confirmado. No se duplicó'); } : null); return 'Ya hay un pago igual registrado'; } } FORCE_DUP = false;
   const vn = isCaseta() ? vigName(SES.vigilanteId) : quien();
   db.put('abonos', { casa: +v.casa, fecha: today(), monto: v.monto, metodo: 'Efectivo con vigilante', cuenta: 'chica', estado: 'con_vigilante', concepto: v.concepto, nota: v.nota, comprobante: v.comprobante, vigilanteId: isCaseta() ? SES.vigilanteId : '', recibidoPor: vn, recibidoEn: new Date().toISOString(), registradoPor: quien() });
 }, { ok: 'Registrar', toast: 'Registrado. Entrégalo al administrador', intro: '<p class="small muted">Este dinero <b>no</b> entra al fondo de caseta: guárdalo aparte y entrégalo al administrador. La casa verá que lo tienes tú hasta que el administrador lo confirme.</p>' });
@@ -2014,8 +2099,8 @@ A.demo = () => confirmar('¿Cargar datos de ejemplo?', () => { LOG_OFF = true; S
   const v1 = db.put('vigilantes', { nombre: 'José Martínez', telefono: '33 1111 2222', rol: 'titular', sueldo: 2600, periodo: 'semanal', ingreso: '2022-03-15', pin: '1212', horario: '24x24', activo: true });
   const v2 = db.put('vigilantes', { nombre: 'Ramón Pérez', telefono: '33 3333 4444', rol: 'titular', sueldo: 2600, periodo: 'semanal', ingreso: '2025-01-10', pin: '3434', horario: '24x24', activo: true });
   const v3 = db.put('vigilantes', { nombre: 'Luis Gómez', telefono: '33 5555 6666', rol: 'reemplazo', sueldo: 0, periodo: 'semanal', pagoDia: 450, pin: '5656', activo: true });
-  const sB = db.put('servicios', { nombre: 'Recolección de basura', categoria: 'Basura', proveedor: 'Don Chuy', monto: 800, frecuencia: 'mensual', dia: 10, responsable: 'caseta' });
-  const sJ = db.put('servicios', { nombre: 'Jardinero', categoria: 'Jardinería', proveedor: 'Pedro', monto: 1200, frecuencia: 'mensual', dia: 12, responsable: 'caseta' });
+  const sB = db.put('destinos', { concepto: 'Basura', destino: 'Don Chuy', monto: 200, frecuencia: 'semanal', dia: '6', desde: ym() + '-01', activo: true });
+  const sJ = db.put('destinos', { concepto: 'Jardinería', destino: 'Pedro', monto: 600, frecuencia: 'quincenal', desde: (() => { const d = new Date(); d.setDate(1); while (d.getDay() !== 2) d.setDate(d.getDate() + 1); return isoDate(d); })(), activo: true });
   const sC = db.put('servicios', { nombre: 'CFE alumbrado común', categoria: 'CFE (luz)', proveedor: 'CFE', monto: 1000, frecuencia: 'mensual', dia: 15, responsable: 'admin', cuenta: 'banco' });
   db.put('servicios', { nombre: 'Agua áreas comunes', categoria: 'Agua', proveedor: 'SIAPA', monto: 500, frecuencia: 'mensual', dia: 20, responsable: 'admin', cuenta: 'banco' });
   const m0 = new Date(); const meses = [2, 1, 0].map(k => { const d = new Date(m0.getFullYear(), m0.getMonth() - k, 1); return isoDate(d).slice(0, 7); });
