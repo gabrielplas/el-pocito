@@ -253,6 +253,18 @@ tfoot td{font-weight:700;background:rgba(var(--tint),.04)}
 .dsec .item{margin-bottom:.45rem}.dsec b.neg,.neg{color:var(--bad)}
 .avisoPush{display:flex;gap:.8rem;align-items:center;border-color:rgba(226,245,139,.3);background:linear-gradient(140deg,var(--brand-soft),var(--card) 70%)}
 .avisoPush>svg{width:26px;height:26px;color:var(--accent);flex:none}
+.modoBtn{background:var(--brand)!important;color:var(--brand-ink)!important;border:0!important;font-weight:700!important;position:relative;padding:0 .85rem!important}
+.modoBtn.casa{background:var(--ink)!important;color:var(--bg)!important}
+.modoBtn i{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-style:normal;font-size:.68rem;display:grid;place-items:center;padding:0 4px}
+body.modo-admin .top{box-shadow:inset 0 3px 0 var(--brand)}
+body.modo-admin .top .mark{background:var(--ink);color:var(--brand)}
+@media (max-width:420px){.modoBtn span{font-size:.78rem}.modoBtn{padding:0 .6rem!important}}
+.modoSeg{position:sticky;top:calc(58px + env(safe-area-inset-top));z-index:19;display:flex;gap:4px;margin:0 1rem .6rem;padding:4px;border-radius:999px;background:var(--card);border:1px solid var(--line-2);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.modoSeg button{flex:1;display:flex;align-items:center;justify-content:center;gap:.45rem;border:0;background:transparent;color:var(--muted);font-weight:700;padding:.62rem .5rem;border-radius:999px;cursor:pointer;position:relative;font-size:.95rem;transition:background .3s var(--ease),color .2s}
+.modoSeg button.on{background:var(--ink);color:var(--bg)}
+.modoSeg button.on.adm{background:var(--brand);color:var(--brand-ink)}
+.modoSeg button i{min-width:20px;height:20px;border-radius:10px;background:var(--bad);color:#fff;font-style:normal;font-size:.72rem;display:grid;place-items:center;padding:0 5px}
+@media (min-width:1024px){.modoSeg{max-width:520px;margin:0 auto .8rem}}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -369,8 +381,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.2';
+const APP_VER = '3.3';
 const NOVEDADES = [
+  ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
   ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
   ['3.1', 'Empezar desde cero: borra los movimientos en todos los dispositivos y conserva casas, configuración y catálogo de servicios'],
   ['3.0', 'Inicio de sesión validado en el servidor (PIN protegido, bloqueo tras 5 intentos) · PIN guardados en la nube · Notificaciones push en celulares'],
@@ -794,7 +807,14 @@ function downloadFile(name, text, type = 'application/json') { const a = documen
 const isSistema = () => SES && SES.tipo === 'sistema';
 const isCaseta = () => SES && SES.tipo === 'caseta';
 const isCasa = () => SES && SES.tipo === 'casa';
-const isAdmin = () => isSistema() || (isCasa() && String(SES.casa) === String(cfg().casaAdmin));
+const esCasaAdmin = () => isCasa() && String(SES.casa) === String(cfg().casaAdmin);
+const modoAdmin = () => esCasaAdmin() && LS.get('pocito_modo') === 'admin';
+const isAdmin = () => isSistema() || modoAdmin();
+function pendientesAdmin() {
+  return db.all('abonos').filter(a => PEND.includes(a.estado)).length + db.all('gastos').filter(g => g.estado === 'pendiente' || g.reembolso === 'pendiente').length
+    + db.all('reservas').filter(r => r.estado === 'solicitada' && r.fecha >= today()).length + db.all('incidencias').filter(i => i.estado === 'abierta').length;
+}
+function cambiarModo(m) { LS.set('pocito_modo', m); UI.view = null; lastView = null; closeMenu(true); render(); window.scrollTo(0, 0); toast(m === 'admin' ? 'Estás en Administración' : 'Estás en Mi casa'); }
 const quien = () => isSistema() ? 'Sistema' : isCaseta() ? 'Caseta (' + vigName(SES.vigilanteId) + ')' : 'Casa ' + SES.casa + (SES.nombre ? ' · ' + SES.nombre : '');
 
 /* ============ Login ============ */
@@ -870,7 +890,7 @@ async function verificarPin(t, pin) {
   LS.set('pocito_ses', SES); logEv('Inició sesión', viaServidor ? 'validado en el servidor' : 'sin conexión'); LOGIN.paso = 'inicio'; UI.view = null; render();
   if (viaServidor) { S.lastPull = S.lastPull || null; sync(); }
 }
-function logout() { if (SES) logEv('Cerró sesión'); quitarSuscripcion(); setTimeout(() => AUTH.clear(), 1500); SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
+function logout() { if (SES) logEv('Cerró sesión'); LS.del('pocito_modo'); quitarSuscripcion(); setTimeout(() => AUTH.clear(), 1500); SES = null; LS.del('pocito_ses'); UI.view = null; render(); }
 
 /* ============ Iconos ============ */
 const IC = {
@@ -917,8 +937,8 @@ function tabsFor() {
   const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['areas', 'Áreas comunes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['actividad', 'Actividad']];
   if (isCaseta()) return [{ items: [['c_visitas', 'Visitas'], ['c_paquetes', 'Paquetes'], ['c_caja', 'Caja caseta'], ['c_casas', 'Casas y emergencias'], ['c_turno', 'Mi turno']] }];
   if (isSistema()) return [{ t: 'Administración', items: admin }, { t: 'General', items: [['comunidad', 'Comunidad'], ['sistema', 'Sistema']] }];
-  const g = [{ t: isAdmin() ? 'Mi casa' : '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Visitas y paquetes'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad'], ...(isAdmin() ? [] : [['areas', 'Áreas comunes']])] }];
-  if (isAdmin()) g.push({ t: 'Administración', items: admin });
+  if (modoAdmin()) return [{ items: [...admin, ['comunidad', 'Comunidad']] }];
+  const g = [{ t: '', items: [['inicio', 'Inicio'], ['micuenta', 'Mi cuenta'], ['visitas', 'Visitas y paquetes'], ['finanzas', 'Finanzas'], ['comunidad', 'Comunidad'], ...(isAdmin() ? [] : [['areas', 'Áreas comunes']])] }];
   return g;
 }
 function go(v, sub) { closeMenu(true); UI.view = v; if (sub) UI.sub[v] = sub; render(); window.scrollTo(0, 0); }
@@ -935,12 +955,13 @@ function render(fromSync) {
   if (fromSync && $('#modals').children.length) { pendingRender = true; return; }
   const app = $('#app');
   applyPrefs();
+  document.body.classList.toggle('modo-admin', !!(SES && modoAdmin()));
   if (!SES) { app.innerHTML = loginView(); lastView = null; return; }
   if (isCaseta() && !db.get('turnos', SES.turnoId)) { /* turno cerrado en otro lado */ }
   const groups = tabsFor(); const items = groups.flatMap(g => g.items); const all = items.map(i => i[0]);
   if (!all.includes(UI.view)) UI.view = all[0];
   const c = cfg();
-  const alertas = (isCaseta() || isAdmin()) ? db.all('alertas').filter(a => !a.atendida) : [];
+  const alertas = (isCaseta() || isSistema() || esCasaAdmin()) ? db.all('alertas').filter(a => !a.atendida) : [];
   let body = '';
   try { body = V[UI.view](); } catch (e) { console.error(e); body = `<div class="card">Error al mostrar esta sección: ${esc(e.message)}</div>`; }
   const label = (items.find(i => i[0] === UI.view) || [])[1] || '';
@@ -948,11 +969,12 @@ function render(fromSync) {
   const NP = navCount(); const prim = all.slice(0, all.length > NP + 1 ? NP : NP + 1); const extra = all.length > prim.length;
   const inMore = !prim.includes(UI.view);
   const y = window.scrollY;
-  app.innerHTML = `<header class="top"><div class="who"><div class="mark">${LOGO_SVG}</div><div class="title">${esc(c.nombre)}<small>${esc(quien())}${isAdmin() && isCasa() ? ' · Administra ' + perLabel(c.anio) : ''}</small></div></div>
+  app.innerHTML = `<header class="top"><div class="who"><div class="mark">${LOGO_SVG}</div><div class="title">${esc(c.nombre)}<small>${esc(quien())}${modoAdmin() ? ' · Administración' : ''}</small></div></div>
     <button class="syncb" onclick="syncNow()" title="Sincronizar" aria-label="Sincronizar"><span id="syncdot" class="dot"></span></button>
     <button onclick="toggleBig()" title="Tamaño de letra" aria-label="Tamaño de letra">A<span style="font-size:${[0.8, 1, 1.2][fsLevel()]}em">A</span></button>
     <button onclick="toggleTheme()" title="${theme() === 'light' ? 'Modo oscuro' : 'Modo claro'}" aria-label="Cambiar tema">${ic(theme() === 'light' ? 'moon' : 'sun')}</button>
     ${isCaseta() ? `<button onclick="A.entregarTurno()">${ic('clock')}<span class="hide-s">Entregar turno</span></button>` : `<button onclick="logout()" title="Salir">${ic('logout')}<span class="hide-s">Salir</span></button>`}</header>
+    ${esCasaAdmin() ? `<div class="modoSeg"><button class="${modoAdmin() ? '' : 'on'}" onclick="${modoAdmin() ? "cambiarModo('casa')" : ''}">${ic('home')}<span>Mi casa</span></button><button class="${modoAdmin() ? 'on adm' : ''}" onclick="${modoAdmin() ? '' : "cambiarModo('admin')"}">${ic('grid')}<span>Administración</span>${!modoAdmin() && pendientesAdmin() ? `<i>${pendientesAdmin()}</i>` : ''}</button></div>` : ''}
     <main>${!syncCfg().url ? `<div class="notice">${ic('alert')} <b>Este dispositivo no está conectado a la nube.</b> Lo que se capture aquí no lo verán las demás casas ni el administrador. <button class="link" onclick="A.conectarLink()">Conectar ahora</button></div>` : syncState.ok === false ? `<div class="notice">${ic('alert')} Sin conexión con la nube: ${esc(syncState.msg.replace('Sin conexión con la nube: ', ''))} <button class="link" onclick="syncNow()">Reintentar</button></div>` : ''}${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}<p class="foot">el pocito · v${APP_VER}</p></main>
     <button class="fab" onclick="openQuick()" aria-label="Acciones rápidas">${ic('plus')}</button>
     <nav class="bnav">${prim.map(k => { const it = items.find(i => i[0] === k); return `<button class="${UI.view === k ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic(TAB_IC[k] || 'dot')}</span><span class="l">${esc(SHORT[k] || it[1])}</span></button>`; }).join('')}
@@ -1024,7 +1046,7 @@ function openMore() {
 function openQuick() {
   let o = [];
   if (isCaseta()) o = [{ l: 'Recibir dinero de una casa', ic: 'cash', fn: () => A.cobroCaseta() }, { l: 'Registrar entrada', ic: 'user', fn: () => A.entrada() }, { l: 'Recibir paquete', ic: 'box', fn: () => A.paquete() }, { l: 'Pago desde caseta', ic: 'wallet', fn: () => A.pagoCaseta('Otros') }, { l: 'Reportar problema', ic: 'alert', fn: () => A.incidencia('caseta') }, { l: 'Entregar turno', ic: 'clock', fn: () => A.entregarTurno() }];
-  else if (isCasa()) { const n = SES.casa; o = [{ l: 'Pagar mis cuotas', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Registrar una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }];
+  else if (isCasa() && !modoAdmin()) { const n = SES.casa; o = [{ l: 'Pagar mis cuotas', ic: 'wallet', fn: () => A.pagoCasa(n) }, { l: 'Registrar una visita', ic: 'user', fn: () => A.prereg(n) }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Reportar un problema', ic: 'pencil', fn: () => A.incidencia(n) }, { l: 'Pagué un gasto del condominio', ic: 'receipt', fn: () => A.gastoCondomino(n) }];
     if (isAdmin()) o.push({ l: 'Adelantar dinero a caseta (admin)', ic: 'cash', fn: () => A.adelantoCaseta() }, { l: 'Nuevo gasto (admin)', ic: 'receipt', fn: () => A.gasto() }, { l: 'Pago de una casa (admin)', ic: 'coins', fn: () => A.pagoAdmin() });
     o.push({ l: 'Emergencia', ic: 'sos', cls: 'danger', fn: () => A.emergencia(n) }); }
   else o = [{ l: 'Adelantar dinero a caseta', ic: 'cash', fn: () => A.adelantoCaseta() }, { l: 'Apartar área común', ic: 'umbrella', fn: () => A.reservar() }, { l: 'Nuevo gasto', ic: 'receipt', fn: () => A.gasto() }, { l: 'Registrar pago de casa', ic: 'coins', fn: () => A.pagoAdmin() }, { l: 'Mover dinero entre cajas', ic: 'swap', fn: () => A.transferencia() }, { l: 'Publicar aviso', ic: 'chat', fn: () => A.aviso() }];
@@ -1034,8 +1056,8 @@ function heroHtml() {
   const h = new Date().getHours(); const sal = h < 12 ? 'buenos días' : h < 19 ? 'buenas tardes' : 'buenas noches';
   let who, q, acts;
   if (isCaseta()) { who = vigName(SES.vigilanteId); q = '¿qué está pasando en la entrada?'; acts = [['user', 'visita', 'A.entrada()'], ['box', 'paquete', 'A.paquete()', 1], ['cash', 'cobro', 'A.cobroCaseta()']]; }
-  else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = SES.nombre || r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'registrar visita', `A.prereg(${SES.casa})`], ['umbrella', 'apartar área', 'A.reservar()'], ['pencil', 'reportar problema', `A.incidencia(${SES.casa})`], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
-  else { who = 'administrador'; q = '¿qué revisamos hoy?'; acts = [['receipt', 'gasto', 'A.gasto()'], ['coins', 'cobrar', 'A.pagoAdmin()', 1], ['chat', 'aviso', 'A.aviso()']]; }
+  else if (isCasa() && !modoAdmin()) { const r = casaRec(SES.casa) || {}; who = SES.nombre || r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'registrar visita', `A.prereg(${SES.casa})`], ['umbrella', 'apartar área', 'A.reservar()'], ['pencil', 'reportar problema', `A.incidencia(${SES.casa})`], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
+  else { who = modoAdmin() ? (SES.nombre || 'Casa ' + SES.casa) + ' · administración' : 'administrador'; q = '¿qué revisamos hoy?'; acts = [['receipt', 'gasto', 'A.gasto()'], ['coins', 'cobrar', 'A.pagoAdmin()', 1], ['chat', 'aviso', 'A.aviso()']]; }
   return `<div class="heroWrap"><section class="heroX"><div class="eye">${ic('eye')}<span>${esc(cfg().nombre).toLowerCase()} · ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
     <div class="greet">${sal}, ${esc(who)}</div><div class="q">${q}</div><div class="spark">${ic('spark')}</div>
     <div class="acts">${acts.map(([i, l, fn, big, cls]) => `<button onclick="${fn}"><span class="c ${big ? 'mainc' : ''} ${cls || ''}">${ic(i)}</span>${l}</button>`).join('')}</div></section></div>`;
@@ -1096,6 +1118,7 @@ V.inicio = () => {
   const misRes = sortBy(db.all('reservas').filter(r => r.casa == n && r.fecha >= today() && ['solicitada', 'aprobada'].includes(r.estado)), 'fecha', false);
   return `${paq.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Paquetes en caseta</h3><span class="tag warn">${paq.length}</span></div><div class="mt">${misPaquetesHtml(n)}</div></div>` : ''}${misRes.length ? `<div class="card"><div class="row sp"><h3 style="margin:0">Mis apartados</h3><button class="link" onclick="go('areas')">Ver todos</button></div><div class="list mt">${misRes.map(resItem).join('')}</div></div>` : ''}${conVig.map(a => `<div class="notice info"><b>${money(a.monto)}</b> entregados a ${esc(a.recibidoPor || 'caseta')} el ${fdate(a.fecha)} · ${esc(a.concepto || '')}<br>Estatus: ${a.estado === 'aviso_vigilante' ? '<b>en la caseta</b>, falta que el vigilante confirme que lo recibió' : a.estado === 'con_vigilante' ? '<b>con el vigilante</b>, falta que lo entregue al administrador' : '<b>entregado al administrador</b>, falta que lo confirme'}</div>`).join('')}
   ${db.all('gastos').filter(g => g.casaPaga == n && g.viaCaseta && ['por_confirmar', 'en_caseta'].includes(g.casetaEstado)).map(g => `<div class="notice info">${ic('cash')} Diste <b>${money(g.monto)}</b> a la caseta (${esc(g.recibidoPor || '')}) para pagar <b>${esc(g.concepto)}</b>. Estatus: ${esc(GC_TXT[g.casetaEstado])}.</div>`).join('')}
+  ${esCasaAdmin() && pendientesAdmin() ? `<div class="notice info" style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap"><span>Tienes <b>${pendientesAdmin()}</b> pendiente(s) como administrador.</span><button class="btn sm primary" onclick="cambiarModo('admin')">Ir a Administración</button></div>` : ''}
   <div class="card hero saldoC ${cc.efectivo > 0.009 ? 'warn' : 'ok'}">
     <h3>Saldo de la Casa ${n}</h3>
     <div class="big">${money(Math.max(0, cc.efectivo))}</div>
