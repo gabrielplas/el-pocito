@@ -369,8 +369,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.1';
+const APP_VER = '3.2';
 const NOVEDADES = [
+  ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
   ['3.1', 'Empezar desde cero: borra los movimientos en todos los dispositivos y conserva casas, configuración y catálogo de servicios'],
   ['3.0', 'Inicio de sesión validado en el servidor (PIN protegido, bloqueo tras 5 intentos) · PIN guardados en la nube · Notificaciones push en celulares'],
   ['2.9', 'Avisos fijos en el saldo de la casa para gastos a cuenta y reembolsos en espera · Nota libre en gastos pagados por la casa · Motivo de rechazo visible para la casa'],
@@ -539,7 +540,7 @@ async function fnCall(name, body) {
   let j = {}; try { j = await r.json(); } catch (e) { }
   return { status: r.status, ok: r.ok, j };
 }
-const idAcceso = t => t.tipo === 'casa' ? 'casa:' + t.casa : t.tipo === 'caseta' ? 'vig:' + t.vigilanteId : 'sistema';
+const idAcceso = t => t.tipo === 'casa' ? 'casa:' + t.casa + (t.usuario ? ':' + t.usuario : '') : t.tipo === 'caseta' ? 'vig:' + t.vigilanteId : 'sistema';
 async function loginServidor(t, pin) {
   try {
     const r = await fnCall('acceso', { accion: 'login', id: idAcceso(t), pin });
@@ -794,12 +795,18 @@ const isSistema = () => SES && SES.tipo === 'sistema';
 const isCaseta = () => SES && SES.tipo === 'caseta';
 const isCasa = () => SES && SES.tipo === 'casa';
 const isAdmin = () => isSistema() || (isCasa() && String(SES.casa) === String(cfg().casaAdmin));
-const quien = () => isSistema() ? 'Sistema' : isCaseta() ? 'Caseta (' + vigName(SES.vigilanteId) + ')' : 'Casa ' + SES.casa;
+const quien = () => isSistema() ? 'Sistema' : isCaseta() ? 'Caseta (' + vigName(SES.vigilanteId) + ')' : 'Casa ' + SES.casa + (SES.nombre ? ' · ' + SES.nombre : '');
 
 /* ============ Login ============ */
 let LOGIN = { paso: 'inicio', target: null, pin: '' };
 function loginView() {
   const c = cfg();
+  if (String(LOGIN.paso).startsWith('casa:')) {
+    const n = +LOGIN.paso.slice(5), us = usuariosCasa(n);
+    return `<div class="loginwrap"><div class="login">${brandMark()}<h1>casa ${n}</h1><p class="muted">¿Quién eres?</p>
+      <div class="lgrid">${us.map((u, i) => `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${n},usuario:'${u.id}',nombre:'${esc(u.nombre).replace(/'/g, '')}'},'${esc(u.nombre).replace(/'/g, '')} · Casa ${n}')"><b>${esc(u.nombre)}</b><span class="muted small">${esc(u.tipo || '')}</span></button>`).join('')}</div>
+      <button class="btn" onclick="LOGIN.paso='inicio';render()">← Regresar</button></div></div>`;
+  }
   if (LOGIN.paso === 'vig') {
     let vs = db.all('vigilantes').filter(v => v.activo !== false);
     if (!vs.length && LS.get('pocito_perfiles')) vs = LS.get('pocito_perfiles').vigilantes || [];
@@ -808,12 +815,14 @@ function loginView() {
       <button class="btn" onclick="LOGIN.paso='inicio';render()">← Regresar</button></div></div>`;
   }
   return `<div class="loginwrap"><div class="login">${brandMark()}<h1>hola,<br>¿quién eres?</h1><p class="muted">${esc(c.nombre)} · Administra este año: <b>${esc(casaLabel(c.casaAdmin))}</b></p>
-    ${syncCfg().url ? '' : `<div class="card" style="margin-top:1.2rem"><b>Este dispositivo no está conectado a la nube.</b><div class="small" style="margin:.3rem 0 .6rem">Pega el enlace de instalación que te mandó el administrador para ver la información de todos.</div><button class="btn" onclick="A.conectarLink()">Conectar este dispositivo</button></div>`}<div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = (casaRec(i + 1) || {}).propietario ? casaRec(i + 1) : ((LS.get('pocito_perfiles') || {}).casas || []).find(x => x.num === i + 1) || {}; return `<button style="--i:${i}" onclick="loginPin({tipo:'casa',casa:${i + 1}},'Casa ${i + 1}')"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
+    ${syncCfg().url ? '' : `<div class="card" style="margin-top:1.2rem"><b>Este dispositivo no está conectado a la nube.</b><div class="small" style="margin:.3rem 0 .6rem">Pega el enlace de instalación que te mandó el administrador para ver la información de todos.</div><button class="btn" onclick="A.conectarLink()">Conectar este dispositivo</button></div>`}<div class="lgrid">${Array.from({ length: NUM_CASAS }, (_, i) => { const r = (casaRec(i + 1) || {}).propietario ? casaRec(i + 1) : ((LS.get('pocito_perfiles') || {}).casas || []).find(x => x.num === i + 1) || {}; return `<button style="--i:${i}" onclick="elegirCasa(${i + 1})"><b>Casa ${i + 1}</b><span class="muted small">${esc(r.propietario || '')}</span></button>`; }).join('')}
       <button class="alt" style="--i:7" onclick="LOGIN.paso='vig';render()"><b>Caseta</b><span class="small">Vigilante de turno</span></button>
       <button style="--i:8" onclick="loginPin({tipo:'sistema'},'Administrador del sistema')"><b>Sistema</b><span class="muted small">Administrador de la herramienta</span></button>
     </div>
     <p class="small muted">Entra con tu PIN de 4 dígitos. ${syncCfg().url ? 'Conectado a la nube.' : 'Este dispositivo está en modo local.'} · v${APP_VER}</p></div></div>`;
 }
+function usuariosCasa(n) { const loc = (casaRec(n) || {}).usuarios || []; if (loc.length) return loc; const pf = ((LS.get('pocito_perfiles') || {}).casas || []).find(x => x.num === n); return (pf && pf.usuarios) || []; }
+function elegirCasa(n) { const us = usuariosCasa(n); if (us.length) { LOGIN.paso = 'casa:' + n; render(); } else loginPin({ tipo: 'casa', casa: n }, 'Casa ' + n); }
 function loginPin(target, label) {
   LOGIN.target = target; LOGIN.pin = '';
   const el = modal(`<h3 style="text-align:center">${esc(label)}</h3><p class="muted small" style="text-align:center">Escribe tu PIN</p>
@@ -843,7 +852,7 @@ async function verificarPin(t, pin) {
     else if (!r.net) { logEv('PIN incorrecto', etiqueta); return pinFalla(r.msg); }
   }
   if (!ok) {
-    const localPin = t.tipo === 'casa' ? (casaRec(t.casa) || {}).pin : t.tipo === 'sistema' ? cfg().pinSistema : (db.get('vigilantes', t.vigilanteId) || {}).pin;
+    const localPin = t.tipo === 'casa' ? (t.usuario ? ((casaRec(t.casa) || {}).usuarios || []).find(u => u.id === t.usuario)?.pin : (casaRec(t.casa) || {}).pin) : t.tipo === 'sistema' ? cfg().pinSistema : (db.get('vigilantes', t.vigilanteId) || {}).pin;
     if (seguro() && !localPin) return pinFalla('Sin conexión: no se puede validar el PIN. Revisa tu internet.');
     ok = localPin === pin;
     if (!ok) { logEv('PIN incorrecto', etiqueta); return pinFalla('PIN incorrecto'); }
@@ -1025,7 +1034,7 @@ function heroHtml() {
   const h = new Date().getHours(); const sal = h < 12 ? 'buenos días' : h < 19 ? 'buenas tardes' : 'buenas noches';
   let who, q, acts;
   if (isCaseta()) { who = vigName(SES.vigilanteId); q = '¿qué está pasando en la entrada?'; acts = [['user', 'visita', 'A.entrada()'], ['box', 'paquete', 'A.paquete()', 1], ['cash', 'cobro', 'A.cobroCaseta()']]; }
-  else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'registrar visita', `A.prereg(${SES.casa})`], ['umbrella', 'apartar área', 'A.reservar()'], ['pencil', 'reportar problema', `A.incidencia(${SES.casa})`], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
+  else if (isCasa()) { const r = casaRec(SES.casa) || {}; who = SES.nombre || r.propietario || 'Casa ' + SES.casa; q = '¿por dónde quieres empezar?'; acts = [['user', 'registrar visita', `A.prereg(${SES.casa})`], ['umbrella', 'apartar área', 'A.reservar()'], ['pencil', 'reportar problema', `A.incidencia(${SES.casa})`], ['sos', 'emergencia', `A.emergencia(${SES.casa})`, 0, 'sos']]; }
   else { who = 'administrador'; q = '¿qué revisamos hoy?'; acts = [['receipt', 'gasto', 'A.gasto()'], ['coins', 'cobrar', 'A.pagoAdmin()', 1], ['chat', 'aviso', 'A.aviso()']]; }
   return `<div class="heroWrap"><section class="heroX"><div class="eye">${ic('eye')}<span>${esc(cfg().nombre).toLowerCase()} · ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
     <div class="greet">${sal}, ${esc(who)}</div><div class="q">${q}</div><div class="spark">${ic('spark')}</div>
@@ -1408,8 +1417,8 @@ V.sistema = () => {
       <div class="row"><button class="btn primary" onclick="A.syncConfig()">${sc.url ? 'Cambiar conexión' : 'Conectar a Supabase'}</button>${sc.url ? '<button class="btn" onclick="sync().then(render)">Sincronizar ahora</button><button class="btn" onclick="A.descargarTodo()">Descargar todo de la nube</button><button class="btn" onclick="A.desconectar()">Desconectar</button>' : ''}</div>
       ${link ? `<p class="small mt">Enlace de instalación para los demás dispositivos (mándalo por WhatsApp a cada casa y ábrelo en la tableta):</p><input style="width:100%" readonly value="${esc(link)}" onclick="this.select()"><button class="btn sm mt" onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Enlace copiado'))">Copiar enlace</button>` : ''}</div>
   </div>
-  <h3 class="mt">Casas, propietarios y PIN</h3>
-  ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Propietario', f: r => esc(r.propietario || '') }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => r.pin ? `<code>${esc(r.pin)}</code>` : (seguro() ? '<span class="tag ok">En la nube</span>' : '') }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
+  <h3 class="mt">Casas, usuarios y PIN</h3>
+  ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Casa / usuarios', f: r => `<b>${esc(r.propietario || '')}</b>${(r.usuarios || []).map(u => `<div class="small">${esc(u.nombre)} <span class="muted">· ${esc(u.tipo || '')}${u.telefono ? ' · ' + esc(u.telefono) : ''}</span></div>`).join('')}` }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => (r.usuarios || []).length ? `<span class="tag">${r.usuarios.length} usuario(s)</span>${r.usuarios.some(u => u.pin) ? '' : seguro() ? ' <span class="tag ok">En la nube</span>' : ''}` : r.pin ? `<code>${esc(r.pin)}</code>` : (seguro() ? '<span class="tag ok">En la nube</span>' : '') }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
   <div class="grid2 mt">
     <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
     <div class="card" style="border-color:rgba(255,125,110,.35)"><h3>Empezar a usarla en serio</h3><p class="small muted">Borra todos los movimientos y datos de prueba en todos los dispositivos. Conserva las casas, la configuración y el catálogo de servicios.</p><div class="row"><button class="btn danger" onclick="A.empezarCero()">Empezar desde cero</button></div></div>
@@ -1417,7 +1426,7 @@ V.sistema = () => {
   </div>
   <div class="card mt"><h3>Seguridad y avisos</h3>
     <p class="small">${!sc.url ? 'Conecta la nube para activar el inicio de sesión seguro y las notificaciones.' : seguro() ? '<span class="tag ok">Inicio de sesión seguro activo</span> Los PIN se validan en el servidor; tras 5 intentos fallidos el acceso se bloquea 10 minutos.' : '<span class="tag warn">Aún no activo</span> Sigue la guía PASOS.md de la carpeta supabase y vuelve a entrar con tu PIN.'}</p>
-    ${seguro() ? `<p class="small muted">PIN que siguen guardados en dispositivos: <b>${db.all('casas').filter(c => c.pin).length + db.all('vigilantes').filter(v => v.pin).length + (cfg().pinSistema ? 1 : 0)}</b></p><div class="row"><button class="btn primary" onclick="A.migrarPins()">Pasar los PIN a la nube</button></div>` : ''}
+    ${seguro() ? `<p class="small muted">PIN que siguen guardados en dispositivos: <b>${db.all('casas').reduce((a, c) => a + (c.pin ? 1 : 0) + (c.usuarios || []).filter(u => u.pin).length, 0) + db.all('vigilantes').filter(v => v.pin).length + (cfg().pinSistema ? 1 : 0)}</b></p><div class="row"><button class="btn primary" onclick="A.migrarPins()">Pasar los PIN a la nube</button></div>` : ''}
     <p class="small mt">Avisos en este dispositivo: <b>${pushEstado()}</b></p>${pushOk() && Notification.permission === 'granted' ? '<div class="row"><button class="btn sm" onclick="probarAviso()">Probar aviso en este dispositivo</button></div>' : ''}</div>
   <div class="card mt"><div class="row sp"><h3 style="margin:0">Respaldos automáticos</h3><button class="btn sm" onclick="A.respaldoAhora()">Respaldar ahora</button></div>
     <p class="small muted">Se guarda uno diario y otro antes de cada actualización (últimos 10, en este dispositivo). Las actualizaciones nunca borran datos; si algo faltara, aquí se recupera.</p>
@@ -1452,7 +1461,7 @@ function feedCasa(n) {
     if (a.recibidoPor && a.recibidoPor !== 'Administrador') { add(a.recibidoEn || a.fecha, 'cash', `Entregaste ${money(a.monto)} a ${esc(a.recibidoPor)} · ${esc(a.concepto || '')}`, a.estado === 'confirmado' ? '' : 'warn');
       if (a.vigConfirmadoEn) add(a.vigConfirmadoEn, 'cash', `${esc(a.recibidoPor)} confirmó que tiene tus ${money(a.monto)}`);
       if (a.entregadoEn) add(a.entregadoEn, 'cash', `El vigilante entregó tus ${money(a.monto)} al administrador`); }
-    else if (a.metodo !== 'compensacion') add(a.creado || a.fecha, 'wallet', `${a.registradoPor && a.registradoPor !== 'Casa ' + n ? 'Se registró' : 'Registraste'} un pago de ${money(a.monto)} (${esc(a.metodo || '')})`, a.estado === 'pendiente' ? 'warn' : '');
+    else if (a.metodo !== 'compensacion') add(a.creado || a.fecha, 'wallet', `${a.registradoPor && !String(a.registradoPor).startsWith('Casa ' + n) ? 'Se registró' : 'Registraste'} un pago de ${money(a.monto)} (${esc(a.metodo || '')})`, a.estado === 'pendiente' ? 'warn' : '');
     if (a.estado === 'confirmado' && (a.confirmadoEn || a.confirmadoPor)) add(a.confirmadoEn || a._u && new Date(a._u).toISOString(), 'shield', `El administrador confirmó la recepción de ${money(a.monto)}`, 'ok');
     if (a.estado === 'rechazado') add(a._u && new Date(a._u).toISOString(), 'alert', `Pago de ${money(a.monto)} rechazado`, 'bad'); });
   db.all('cargos').filter(c => c.casa == n).forEach(c => add(c.fecha, 'receipt', `Cargo: ${esc(c.concepto)} · ${money(c.monto)}`));
@@ -1638,14 +1647,26 @@ function dupModal(d, alConfirmar) {
   m.querySelector('#dupForce').onclick = () => { closeModal(); FORCE_DUP = true; setTimeout(() => { const b = $('#mfok'); if (b) { b.disabled = false; b.click(); } }, 60); };
   if (alConfirmar) m.querySelector('#dupSame').onclick = () => { closeModal(); closeModal(); alConfirmar(); render(); };
 }
+function conceptosPago(n) {
+  const cc = cuentaCasa(n), ord = cc.deb.filter(d => d.tipo !== 'especial'), esp = cc.deb.filter(d => d.tipo === 'especial');
+  const mes = ord[0] ? { c: ord[0].concepto, m: ord[0].resta } : { c: 'Cuota de mantenimiento ' + mesLabel(cc.prox), m: cc.cuota };
+  const o = [];
+  if (esp.length) o.push({ c: mes.c + ' + ' + esp.map(e => e.concepto).join(' + '), m: mes.m + sum(esp, e => e.resta), l: mes.c.replace('Cuota de mantenimiento', 'Cuota de') + ' + extraordinaria' });
+  o.push({ c: mes.c, m: mes.m, l: mes.c.replace('Cuota de mantenimiento', 'Cuota de') });
+  esp.forEach(e => o.push({ c: e.concepto, m: e.resta, l: 'Extraordinaria: ' + e.concepto.replace(/^Cuota (especial|extraordinaria):?\s*/i, '') }));
+  ord.slice(1).forEach(d => o.push({ c: d.concepto, m: d.resta, l: d.concepto.replace('Cuota de mantenimiento', 'Cuota de') }));
+  if (cc.deb.length > 1) o.push({ c: 'Todo lo pendiente', m: sum(cc.deb, d => d.resta), l: 'Todo lo pendiente' });
+  if (!ord.length) { const sig = isoDate(new Date(+cc.prox.slice(0, 4), +cc.prox.slice(5, 7), 1)).slice(0, 7); o.push({ c: 'Cuota de mantenimiento ' + mesLabel(sig), m: cc.cuota, l: 'Cuota de ' + mesLabel(sig) + ' (adelantada)' }); }
+  o.forEach((x, i) => { x.k = 'k' + i; x.l = x.l + ' · ' + money(x.m); });
+  o.push({ k: 'otro', c: '', m: null, l: 'Otro (especificar)' });
+  return o;
+}
 const vigOrden = () => sortBy(db.all('vigilantes').filter(v => v.activo !== false), 'nombre', false).sort((a, b) => (a.rol === 'reemplazo') - (b.rol === 'reemplazo'));
 A.pagoCasa = n => {
   if (isAdmin() && isCasa() && false) return;
   const cc = cuentaCasa(n), t = turnoActivo();
-  const conceptos = cc.deb.length ? cc.deb.map(d => [d.concepto, d.concepto + ' · ' + money(d.resta)]) : [['Cuota de mantenimiento ' + mesLabel(cc.prox), 'Cuota de ' + mesLabel(cc.prox) + ' · ' + money(cc.cuota)]];
-  if (!cc.deb.length) { const sig = isoDate(new Date(+cc.prox.slice(0, 4), +cc.prox.slice(5, 7), 1)).slice(0, 7); conceptos.push(['Cuota de mantenimiento ' + mesLabel(sig), 'Cuota de ' + mesLabel(sig) + ' (adelantada)']); }
-  conceptos.push(['otro', 'Otro']);
-  const montoDef = cc.deb.length ? cc.deb[0].resta : cc.cuota;
+  const CP = conceptosPago(n), conceptos = CP.map(x => [x.k, x.l]);
+  const montoDef = CP[0].m;
   const vs = vigOrden();
   openForm('Pagar mis cuotas · Casa ' + n, [
     { name: 'concepto', label: '¿Qué estás pagando?', type: 'select', options: conceptos, full: true },
@@ -1658,7 +1679,7 @@ A.pagoCasa = n => {
     { name: 'comprobante', label: 'Foto del comprobante (opcional)', type: 'file', accept: 'image/*,application/pdf', full: true }
   ], v => {
     if (!(v.monto > 0)) return 'Escribe el monto';
-    const concepto = v.concepto === 'otro' ? (v.notaOtro || 'Otro pago') : v.concepto;
+    const concepto = v.concepto === 'otro' ? (v.notaOtro || 'Otro pago') : (CP.find(x => x.k === v.concepto) || {}).c;
     if (v.concepto === 'otro' && !v.notaOtro) return 'Describe el pago';
     if (!FORCE_DUP) { const d = dupAbono(n, v.monto); if (d) { dupModal(d); return 'Ya hay un pago igual registrado'; } } FORCE_DUP = false;
     const base = { casa: n, fecha: v.fecha, monto: v.monto, concepto, nota: concepto, comprobante: v.comprobante, registradoPor: quien(), origen: 'casa' };
@@ -1672,18 +1693,35 @@ A.pagoCasa = n => {
     intro: `<p class="small muted">Este pago se abona al <b>saldo de tu casa</b> (cuotas de mantenimiento y extraordinarias). ${isAdmin() ? '' : 'Quedará en espera hasta que el vigilante y el administrador confirmen que tienen el dinero.'}</p>`,
     onLive: f => { const ef = f.elements.metodo.value === 'Efectivo'; const show = (nm, on) => { const el = f.elements[nm]; if (el) el.closest('.fld').style.display = on ? '' : 'none'; };
       show('notaOtro', f.elements.concepto.value === 'otro'); show('aQuien', ef && !isAdmin()); show('vigilanteId', ef && !isAdmin() && f.elements.aQuien.value === 'vigilante');
-      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const d = cc.deb.find(x => x.concepto === f.elements.concepto.value); if (d) setMoney(f.elements.monto, d.resta); else if (/^Cuota de mantenimiento/.test(f.elements.concepto.value)) setMoney(f.elements.monto, cc.cuota); } }
+      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x && x.m != null) setMoney(f.elements.monto, x.m); } }
   });
 };
-A.pagoAdmin = () => openForm('Registrar pago de una casa', [
-  { name: 'casa', label: 'Casa', type: 'select', options: casaOpts() },
-  { name: 'monto', label: 'Monto', type: 'number', required: true },
-  { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
-  { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Transferencia', 'Depósito', 'Efectivo'] },
-  { name: 'cuenta', label: 'Entró a', type: 'select', options: cuentaOpts(['banco', 'chica']) },
-  { name: 'nota', label: 'Nota' },
-  { name: 'comprobante', label: 'Comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
-], v => { if (!(v.monto > 0)) return 'Escribe el monto'; db.put('abonos', { ...v, casa: +v.casa, estado: 'confirmado', registradoPor: quien() }); });
+A.pagoAdmin = (casa0) => {
+  let n0 = +(casa0 || 1), CP = conceptosPago(n0);
+  openForm('Registrar pago de una casa', [
+    { name: 'casa', label: 'Casa', type: 'select', options: casaOpts(), value: String(n0) },
+    { name: 'concepto', label: '¿Qué está pagando?', type: 'select', options: CP.map(x => [x.k, x.l]), full: true },
+    { name: 'notaOtro', label: 'Especifica el concepto', full: true, placeholder: 'Ej. parte de la cuota extraordinaria' },
+    { name: 'monto', label: 'Monto', type: 'number', required: true, value: CP[0].m || '' },
+    { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Efectivo', 'Transferencia', 'Depósito'], value: 'Efectivo' },
+    { name: 'cuenta', label: 'Entró a', type: 'select', options: cuentaOpts(['chica', 'banco']), value: 'chica' },
+    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
+    { name: 'nota', label: 'Nota (opcional)' },
+    { name: 'comprobante', label: 'Comprobante', type: 'file', accept: 'image/*,application/pdf', full: true }
+  ], v => {
+    if (!(v.monto > 0)) return 'Escribe el monto';
+    const concepto = v.concepto === 'otro' ? v.notaOtro : (CP.find(x => x.k === v.concepto) || {}).c;
+    if (!concepto) return 'Especifica el concepto';
+    if (!FORCE_DUP) { const d = dupAbono(+v.casa, v.monto); if (d) { dupModal(d); return 'Ya hay un pago igual registrado'; } } FORCE_DUP = false;
+    db.put('abonos', { casa: +v.casa, monto: v.monto, fecha: v.fecha, metodo: v.metodo, cuenta: v.cuenta, concepto, nota: [concepto, v.nota].filter(Boolean).join(' · '), comprobante: v.comprobante, estado: 'confirmado', registradoPor: quien(), confirmadoPor: quien(), confirmadoEn: new Date().toISOString() });
+  }, { toast: 'Pago registrado y confirmado',
+    onLive: f => {
+      if (+f.elements.casa.value !== n0) { n0 = +f.elements.casa.value; CP = conceptosPago(n0); f.elements.concepto.innerHTML = CP.map(x => `<option value="${x.k}">${esc(x.l)}</option>`).join(''); f.dataset.lc = ''; }
+      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x && x.m != null) setMoney(f.elements.monto, x.m); }
+      f.elements.notaOtro.closest('.fld').style.display = f.elements.concepto.value === 'otro' ? '' : 'none';
+      if (f.dataset.lm !== f.elements.metodo.value) { f.dataset.lm = f.elements.metodo.value; f.elements.cuenta.value = f.elements.metodo.value === 'Efectivo' ? 'chica' : 'banco'; }
+    } });
+};
 A.confirmarPago = id => { const a = db.get('abonos', id); openForm((a.recibidoPor ? 'Confirmar que recibiste el efectivo · ' : 'Confirmar pago de ') + 'Casa ' + a.casa + ' · ' + money(a.monto), [{ name: 'cuenta', label: '¿A dónde entró el dinero?', type: 'select', options: cuentaOpts(['banco', 'chica']), value: a.cuenta || metodoCuenta(a.metodo) }], v => { db.put('abonos', { ...a, cuenta: v.cuenta, estado: 'confirmado', confirmadoPor: quien(), confirmadoEn: new Date().toISOString() }); }, { ok: 'Confirmar', toast: 'Pago confirmado', intro: a.recibidoPor ? `<p class="small muted">Lo cobró ${esc(a.recibidoPor)} el ${fdate(a.fecha)}${a.entregadoEn ? ' · te lo entregó el ' + fdt(a.entregadoEn) : ''}<br>Al confirmar se abona al estado de cuenta de la casa.</p>` : '' }); };
 A.rechazarPago = id => { const a = db.get('abonos', id); openForm('Rechazar pago', [{ name: 'motivo', label: 'Motivo', required: true }], v => { db.put('abonos', { ...a, estado: 'rechazado', nota: (a.nota || '') + ' · Rechazado: ' + v.motivo }); }, { ok: 'Rechazar' }); };
 
@@ -2114,8 +2152,11 @@ A.miCasa = n => { const c = casaRec(n); openForm('Mis datos · Casa ' + n, [
   { name: 'pin', label: seguro() ? 'Nuevo PIN (vacío = no cambiar)' : 'Mi PIN', value: seguro() ? '' : c.pin, maxlength: 4, inputmode: 'numeric' },
   { name: 'emergencia', label: 'Contactos de emergencia (los ve caseta)', type: 'textarea', value: c.emergencia, placeholder: 'Nombre, parentesco, teléfono' },
   { name: 'notas', label: 'Indicaciones para caseta (opcional)', type: 'textarea', value: c.notas, placeholder: 'Solo lo que quieras compartir para una emergencia' }
-], async v => { if (seguro()) { if (v.pin) { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; const e = await savePin('casa:' + n, v.pin); if (e) return e; } db.put('casas', { ...c, ...v, pin: '' }); return; }
-  if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+], async v => { const usr = SES.usuario; const pin = v.pin; delete v.pin;
+  if (pin && !/^\d{4}$/.test(pin)) return 'El PIN debe tener 4 números';
+  let rec = { ...c, ...v };
+  if (pin) { if (seguro()) { const e = await savePin('casa:' + n + (usr ? ':' + usr : ''), pin); if (e) return e; } else if (usr) rec.usuarios = (c.usuarios || []).map(u => u.id === usr ? { ...u, pin } : u); else rec.pin = pin; }
+  db.put('casas', rec); }); };
 A.votar = (avisoId, opcion) => { db.put('votos', { id: avisoId + '_' + SES.casa, avisoId, casa: SES.casa, opcion }); render(); toast('Voto registrado: ' + opcion); };
 
 /* ---- Comunidad (admin) ---- */
@@ -2155,14 +2196,30 @@ A.config = () => { const c = cfg(); openForm('Configuración del condominio', [
 ], async v => { if (seguro()) { if (v.pinSistema) { if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; const e = await savePin('sistema', v.pinSistema); if (e) return e; } setCfg({ ...v, pinSistema: '', casaAdmin: +v.casaAdmin }); return; }
   if (!/^\d{4}$/.test(v.pinSistema)) return 'El PIN debe tener 4 números'; setCfg({ ...v, casaAdmin: +v.casaAdmin }); }); };
 A.casa = n => { const c = casaRec(n); openForm('Casa ' + n, [
-  { name: 'propietario', label: 'Propietario(s)', value: c.propietario }, { name: 'telefono', label: 'Teléfono', value: c.telefono, type: 'tel' },
-  { name: 'pin', label: seguro() ? 'Nuevo PIN (vacío = no cambiar)' : 'PIN', value: seguro() ? '' : c.pin, maxlength: 4, inputmode: 'numeric', required: !seguro() },
+  { name: 'propietario', label: 'Nombre de la casa / familia', value: c.propietario, placeholder: 'Ej. Familia Marmolejo' }, { name: 'telefono', label: 'Teléfono principal', value: c.telefono, type: 'tel' },
+  { type: 'html', html: `<div class="fld full"><span>Usuarios de la casa (cada uno entra con su PIN)</span><div class="list" style="margin-top:.3rem">${(c.usuarios || []).map(u => `<div class="item"><div><div class="t">${esc(u.nombre)}</div><div class="small muted">${esc(u.tipo || '')}${u.telefono ? ' · ' + esc(u.telefono) : ''} · ${u.pin ? 'PIN ' + esc(u.pin) : seguro() ? 'PIN en la nube' : 'sin PIN'}</div></div><div class="row"><button type="button" class="btn sm" onclick="closeModal();A.usuario(${n},'${u.id}')">Editar</button><button type="button" class="btn sm ghost" onclick="closeModal();A.quitarUsuario(${n},'${u.id}')">Quitar</button></div></div>`).join('') || '<p class="small muted">Sin usuarios: se entra con el PIN de la casa.</p>'}</div><button type="button" class="btn sm mt" onclick="closeModal();A.usuario(${n})">+ Agregar usuario</button></div>` },
+  { name: 'pin', label: seguro() ? 'PIN general de la casa · nuevo (vacío = no cambiar)' : 'PIN general de la casa', value: seguro() ? '' : c.pin, maxlength: 4, inputmode: 'numeric', required: !seguro() && !(c.usuarios || []).length },
   { name: 'cuota', label: 'Cuota propia (vacío = general)', type: 'number', value: c.cuota ?? '' },
   { name: 'emergencia', label: 'Contactos de emergencia', type: 'textarea', value: c.emergencia },
   { name: 'notas', label: 'Indicaciones para caseta', type: 'textarea', value: c.notas },
   { name: 'mayor', label: 'Requiere atención especial (adultos mayores, etc.)', type: 'checkbox', value: c.mayor }
 ], async v => { if (seguro()) { if (v.pin) { if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; const e = await savePin('casa:' + n, v.pin); if (e) return e; } db.put('casas', { ...c, ...v, pin: '' }); return; }
-  if (!/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+  if (v.pin && !/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números'; if (!v.pin && !(c.usuarios || []).length) return 'El PIN debe tener 4 números'; db.put('casas', { ...c, ...v }); }); };
+A.usuario = (n, uidU) => { const c = casaRec(n), us = c.usuarios || [], u = us.find(x => x.id === uidU) || {};
+  openForm((uidU ? 'Editar usuario' : 'Nuevo usuario') + ' · Casa ' + n, [
+    { name: 'nombre', label: 'Nombre', value: u.nombre, required: true },
+    { name: 'tipo', label: 'Tipo', type: 'select', options: ['Propietario(a)', 'Familiar', 'Inquilino(a)', 'Otro'], value: u.tipo || 'Propietario(a)' },
+    { name: 'telefono', label: 'Teléfono', type: 'tel', value: u.telefono },
+    { name: 'pin', label: seguro() && uidU ? 'Nuevo PIN (vacío = no cambiar)' : 'PIN de 4 dígitos', value: seguro() ? '' : (u.pin || String(Math.floor(1000 + Math.random() * 9000))), maxlength: 4, inputmode: 'numeric', required: !(seguro() && uidU) }
+  ], async v => {
+    if (v.pin && !/^\d{4}$/.test(v.pin)) return 'El PIN debe tener 4 números';
+    const rec = { ...u, id: u.id || uid().slice(0, 8), nombre: v.nombre, tipo: v.tipo, telefono: v.telefono, pin: u.pin || '' };
+    if (v.pin) { if (seguro()) { const e = await savePin('casa:' + n + ':' + rec.id, v.pin); if (e) return e; rec.pin = ''; } else rec.pin = v.pin; }
+    const nu = uidU ? us.map(x => x.id === uidU ? rec : x) : [...us, rec];
+    db.put('casas', { ...casaRec(n), usuarios: nu, propietario: casaRec(n).propietario || rec.nombre });
+  }, { toast: 'Usuario guardado' });
+};
+A.quitarUsuario = (n, uidU) => { const c = casaRec(n), u = (c.usuarios || []).find(x => x.id === uidU); confirmar(`¿Quitar a ${u.nombre} de Casa ${n}? Ya no podrá entrar.`, () => db.put('casas', { ...c, usuarios: (c.usuarios || []).filter(x => x.id !== uidU) }), 'Quitar'); };
 const SQL_SETUP = `create table if not exists registros (
   id text primary key,
   coleccion text not null,
@@ -2204,7 +2261,8 @@ A.desconectar = () => confirmar('¿Desconectar este dispositivo de la nube? Los 
 A.migrarPins = () => confirmar('¿Pasar todos los PIN a la nube? Después ya no se guardan en los dispositivos y solo el servidor los valida.', async () => {
   if (!AUTH.get()) return toast('Primero entra como Sistema con conexión a internet');
   const tareas = [];
-  db.all('casas').forEach(c => { if (c.pin) tareas.push(['casa:' + c.num, c.pin, () => db.put('casas', { ...c, pin: '' })]); });
+  db.all('casas').forEach(c => { if (c.pin) tareas.push(['casa:' + c.num, c.pin, () => db.put('casas', { ...casaRec(c.num), pin: '' })]);
+    (c.usuarios || []).forEach(u => { if (u.pin) tareas.push(['casa:' + c.num + ':' + u.id, u.pin, () => { const cc = casaRec(c.num); db.put('casas', { ...cc, usuarios: cc.usuarios.map(x => x.id === u.id ? { ...x, pin: '' } : x) }); }]); }); });
   db.all('vigilantes').forEach(v => { if (v.pin) tareas.push(['vig:' + v.id, v.pin, () => db.put('vigilantes', { ...v, pin: '' })]); });
   if (cfg().pinSistema) tareas.push(['sistema', cfg().pinSistema, () => setCfg({ pinSistema: '' })]);
   let ok = 0, err = '';
