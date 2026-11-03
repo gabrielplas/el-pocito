@@ -381,7 +381,7 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.3';
+const APP_VER = '3.3.1';
 const NOVEDADES = [
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
   ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
@@ -1672,16 +1672,17 @@ function dupModal(d, alConfirmar) {
 }
 function conceptosPago(n) {
   const cc = cuentaCasa(n), ord = cc.deb.filter(d => d.tipo !== 'especial'), esp = cc.deb.filter(d => d.tipo === 'especial');
-  const mes = ord[0] ? { c: ord[0].concepto, m: ord[0].resta } : { c: 'Cuota de mantenimiento ' + mesLabel(cc.prox), m: cc.cuota };
-  const o = [];
-  if (esp.length) o.push({ c: mes.c + ' + ' + esp.map(e => e.concepto).join(' + '), m: mes.m + sum(esp, e => e.resta), l: mes.c.replace('Cuota de mantenimiento', 'Cuota de') + ' + extraordinaria' });
-  o.push({ c: mes.c, m: mes.m, l: mes.c.replace('Cuota de mantenimiento', 'Cuota de') });
-  esp.forEach(e => o.push({ c: e.concepto, m: e.resta, l: 'Extraordinaria: ' + e.concepto.replace(/^Cuota (especial|extraordinaria):?\s*/i, '') }));
-  ord.slice(1).forEach(d => o.push({ c: d.concepto, m: d.resta, l: d.concepto.replace('Cuota de mantenimiento', 'Cuota de') }));
-  if (cc.deb.length > 1) o.push({ c: 'Todo lo pendiente', m: sum(cc.deb, d => d.resta), l: 'Todo lo pendiente' });
-  if (!ord.length) { const sig = isoDate(new Date(+cc.prox.slice(0, 4), +cc.prox.slice(5, 7), 1)).slice(0, 7); o.push({ c: 'Cuota de mantenimiento ' + mesLabel(sig), m: cc.cuota, l: 'Cuota de ' + mesLabel(sig) + ' (adelantada)' }); }
-  o.forEach((x, i) => { x.k = 'k' + i; x.l = x.l + ' · ' + money(x.m); });
-  o.push({ k: 'otro', c: '', m: null, l: 'Otro (especificar)' });
+  const mesK = ord[0] ? (ord[0].clave || '').slice(6) || ym(ord[0].fecha) : cc.prox;
+  const mes = { c: ord[0] ? ord[0].concepto : 'Cuota de mantenimiento ' + mesLabel(mesK), m: ord[0] ? ord[0].resta : cc.cuota, l: 'Cuota ' + mesLabel(mesK) };
+  const espMes = esp.length ? ym(esp[0].fecha) : mesK, espM = sum(esp, e => e.resta);
+  const espC = esp.length ? esp.map(e => e.concepto).join(' + ') : 'Cuota extraordinaria ' + mesLabel(espMes);
+  const o = [
+    { k: 'k0', c: mes.c + ' + ' + espC, m: esp.length ? mes.m + espM : null, l: mes.l + ' + extraordinaria' + (esp.length ? ' · ' + money(mes.m + espM) : '') },
+    { k: 'k1', c: mes.c, m: mes.m, l: mes.l + ' · ' + money(mes.m) },
+    { k: 'k2', c: espC, m: esp.length ? espM : null, l: 'Extraordinaria ' + mesLabel(espMes) + (esp.length ? ' · ' + money(espM) : '') },
+    { k: 'otro', c: '', m: null, l: 'Otro (especificar)' }
+  ];
+  o.def = esp.length ? 'k0' : 'k1';
   return o;
 }
 const vigOrden = () => sortBy(db.all('vigilantes').filter(v => v.activo !== false), 'nombre', false).sort((a, b) => (a.rol === 'reemplazo') - (b.rol === 'reemplazo'));
@@ -1689,10 +1690,10 @@ A.pagoCasa = n => {
   if (isAdmin() && isCasa() && false) return;
   const cc = cuentaCasa(n), t = turnoActivo();
   const CP = conceptosPago(n), conceptos = CP.map(x => [x.k, x.l]);
-  const montoDef = CP[0].m;
+  const montoDef = (CP.find(x => x.k === CP.def) || {}).m;
   const vs = vigOrden();
   openForm('Pagar mis cuotas · Casa ' + n, [
-    { name: 'concepto', label: '¿Qué estás pagando?', type: 'select', options: conceptos, full: true },
+    { name: 'concepto', label: '¿Qué estás pagando?', type: 'select', options: conceptos, value: CP.def, full: true },
     { name: 'notaOtro', label: 'Describe el pago', full: true, placeholder: 'Ej. parte de la cuota extraordinaria' },
     { name: 'monto', label: 'Monto pagado', type: 'number', required: true, value: montoDef || '' },
     { name: 'fecha', label: 'Fecha', type: 'date', value: today(), required: true },
@@ -1716,16 +1717,16 @@ A.pagoCasa = n => {
     intro: `<p class="small muted">Este pago se abona al <b>saldo de tu casa</b> (cuotas de mantenimiento y extraordinarias). ${isAdmin() ? '' : 'Quedará en espera hasta que el vigilante y el administrador confirmen que tienen el dinero.'}</p>`,
     onLive: f => { const ef = f.elements.metodo.value === 'Efectivo'; const show = (nm, on) => { const el = f.elements[nm]; if (el) el.closest('.fld').style.display = on ? '' : 'none'; };
       show('notaOtro', f.elements.concepto.value === 'otro'); show('aQuien', ef && !isAdmin()); show('vigilanteId', ef && !isAdmin() && f.elements.aQuien.value === 'vigilante');
-      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x && x.m != null) setMoney(f.elements.monto, x.m); } }
+      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x) setMoney(f.elements.monto, x.m != null ? x.m : x.k === 'k0' ? CP[1].m : ''); } }
   });
 };
 A.pagoAdmin = (casa0) => {
   let n0 = +(casa0 || 1), CP = conceptosPago(n0);
   openForm('Registrar pago de una casa', [
     { name: 'casa', label: 'Casa', type: 'select', options: casaOpts(), value: String(n0) },
-    { name: 'concepto', label: '¿Qué está pagando?', type: 'select', options: CP.map(x => [x.k, x.l]), full: true },
+    { name: 'concepto', label: '¿Qué está pagando?', type: 'select', options: CP.map(x => [x.k, x.l]), value: CP.def, full: true },
     { name: 'notaOtro', label: 'Especifica el concepto', full: true, placeholder: 'Ej. parte de la cuota extraordinaria' },
-    { name: 'monto', label: 'Monto', type: 'number', required: true, value: CP[0].m || '' },
+    { name: 'monto', label: 'Monto', type: 'number', required: true, value: (CP.find(x => x.k === CP.def) || {}).m || '' },
     { name: 'metodo', label: 'Forma de pago', type: 'select', options: ['Efectivo', 'Transferencia', 'Depósito'], value: 'Efectivo' },
     { name: 'cuenta', label: 'Entró a', type: 'select', options: cuentaOpts(['chica', 'banco']), value: 'chica' },
     { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
@@ -1739,8 +1740,8 @@ A.pagoAdmin = (casa0) => {
     db.put('abonos', { casa: +v.casa, monto: v.monto, fecha: v.fecha, metodo: v.metodo, cuenta: v.cuenta, concepto, nota: [concepto, v.nota].filter(Boolean).join(' · '), comprobante: v.comprobante, estado: 'confirmado', registradoPor: quien(), confirmadoPor: quien(), confirmadoEn: new Date().toISOString() });
   }, { toast: 'Pago registrado y confirmado',
     onLive: f => {
-      if (+f.elements.casa.value !== n0) { n0 = +f.elements.casa.value; CP = conceptosPago(n0); f.elements.concepto.innerHTML = CP.map(x => `<option value="${x.k}">${esc(x.l)}</option>`).join(''); f.dataset.lc = ''; }
-      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x && x.m != null) setMoney(f.elements.monto, x.m); }
+      if (+f.elements.casa.value !== n0) { n0 = +f.elements.casa.value; CP = conceptosPago(n0); f.elements.concepto.innerHTML = CP.map(x => `<option value="${x.k}">${esc(x.l)}</option>`).join(''); f.elements.concepto.value = CP.def; f.dataset.lc = ''; }
+      if (f.dataset.lc !== f.elements.concepto.value) { f.dataset.lc = f.elements.concepto.value; const x = CP.find(y => y.k === f.elements.concepto.value); if (x) setMoney(f.elements.monto, x.m != null ? x.m : x.k === 'k0' ? CP[1].m : ''); }
       f.elements.notaOtro.closest('.fld').style.display = f.elements.concepto.value === 'otro' ? '' : 'none';
       if (f.dataset.lm !== f.elements.metodo.value) { f.dataset.lm = f.elements.metodo.value; f.elements.cuenta.value = f.elements.metodo.value === 'Efectivo' ? 'chica' : 'banco'; }
     } });
