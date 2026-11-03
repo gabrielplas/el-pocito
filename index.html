@@ -381,7 +381,7 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.3.1';
+const APP_VER = '3.3.2';
 const NOVEDADES = [
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
   ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
@@ -682,6 +682,7 @@ function estadoServicio(s) {
   const hoy = today();
   let venc;
   if (s.frecuencia === 'semanal') { venc = ult ? addDays(ult.fecha, 7) : hoy; }
+  else if (s.frecuencia === 'quincenal' && ult) { venc = addDays(ult.fecha, 15); }
   else {
     const meses = s.frecuencia === 'bimestral' ? 2 : 1;
     if (ult) { const d = toDate(ult.fecha); d.setDate(1); d.setMonth(d.getMonth() + meses); const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(num(s.dia) || 1, dim)); venc = isoDate(d); }
@@ -1377,7 +1378,7 @@ V.servicios = () => {
   const ss = db.all('servicios');
   return `<div class="sect"><h2>Servicios y pagos recurrentes</h2><button class="btn primary" onclick="A.servicio()">Agregar servicio</button></div>
   <p class="small muted">CFE, agua, basura, jardinero, vigilancia… La app avisa cuándo vence cada uno. Los que paga caseta aparecen también en la tableta.</p>
-  ${table([{ h: 'Servicio', f: s => `<b>${esc(s.nombre)}</b><div class="small muted">${esc(s.proveedor || '')}</div>` }, { h: 'Frecuencia', f: s => esc(s.frecuencia) + (s.frecuencia !== 'semanal' ? ' · día ' + esc(s.dia) : '') }, { h: 'Monto aprox.', num: 1, f: s => money(s.monto) },
+  ${table([{ h: 'Servicio', f: s => `<b>${esc(s.nombre)}</b><div class="small muted">${esc(s.proveedor || '')}</div>` }, { h: 'Frecuencia', f: s => ({ semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual', bimestral: 'Bimestral' }[s.frecuencia] || esc(s.frecuencia)) + (['mensual', 'bimestral'].includes(s.frecuencia) ? ' · día ' + esc(s.dia) : '') }, { h: 'Monto aprox.', num: 1, f: s => money(s.monto) },
     { h: 'Paga', f: s => s.responsable === 'caseta' ? 'Caseta (fondo)' : esc(CUENTAS[s.cuenta] || 'Administrador') }, { h: 'Último pago', f: s => { const e = estadoServicio(s); return e.ult ? fdate(e.ult.fecha) + ' · ' + money(e.ult.monto) : '—'; } },
     { h: 'Estado', f: s => { const e = estadoServicio(s); return `<span class="tag ${e.cls}">${e.txt}</span>`; } },
     { h: '', f: s => `<span class="nowrap"><button class="btn sm primary" onclick="A.pagarServicio('${s.id}')">Pagar</button> <button class="btn sm" onclick="A.servicio('${s.id}')">Editar</button></span>` }], ss, null, 'Agrega los pagos recurrentes del condominio')}`;
@@ -1947,11 +1948,11 @@ A.servicio = id => {
     { name: 'categoria', label: 'Categoría', type: 'select', options: CATS, value: s.categoria },
     { name: 'proveedor', label: 'Proveedor', value: s.proveedor },
     { name: 'monto', label: 'Monto aproximado', type: 'number', value: s.monto },
-    { name: 'frecuencia', label: 'Frecuencia', type: 'select', options: ['semanal', 'mensual', 'bimestral'], value: s.frecuencia },
-    { name: 'dia', label: 'Día de pago (mensual/bimestral)', type: 'number', step: '1', value: s.dia },
+    { name: 'frecuencia', label: 'Frecuencia', type: 'select', options: [['semanal', 'Semanal'], ['quincenal', 'Quincenal (cada 15 días)'], ['mensual', 'Mensual'], ['bimestral', 'Bimestral']], value: s.frecuencia },
+    { name: 'dia', label: 'Día del mes del primer pago', type: 'number', step: '1', value: s.dia },
     { name: 'responsable', label: 'Quién lo paga', type: 'select', options: [['admin', 'Administrador'], ['caseta', 'Caseta (con el fondo)']], value: s.responsable },
     { name: 'cuenta', label: 'De qué caja (si paga el admin)', type: 'select', options: cuentaOpts(['banco', 'chica']), value: s.cuenta }
-  ], v => { db.put('servicios', { ...s, ...v }); });
+  ], v => { db.put('servicios', { ...s, ...v }); }, { onLive: f => { f.elements.dia.closest('.fld').style.display = f.elements.frecuencia.value === 'semanal' ? 'none' : ''; } });
   if (id) $('#mf .mact').insertAdjacentHTML('afterbegin', `<button type="button" class="btn danger" style="margin-right:auto" onclick="closeModal();A.borrar('servicios','${id}')">Borrar</button>`);
 };
 A.pagarServicio = id => { const s = db.get('servicios', id); if (s.responsable === 'caseta') return A.pagoCaseta(s.categoria, id, true); A.gasto(null, { categoria: s.categoria, concepto: s.nombre, monto: s.monto, proveedor: s.proveedor, cuenta: s.cuenta || 'banco', servicioId: id }); };
