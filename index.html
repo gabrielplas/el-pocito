@@ -369,8 +369,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.0.1';
+const APP_VER = '3.1';
 const NOVEDADES = [
+  ['3.1', 'Empezar desde cero: borra los movimientos en todos los dispositivos y conserva casas, configuración y catálogo de servicios'],
   ['3.0', 'Inicio de sesión validado en el servidor (PIN protegido, bloqueo tras 5 intentos) · PIN guardados en la nube · Notificaciones push en celulares'],
   ['2.9', 'Avisos fijos en el saldo de la casa para gastos a cuenta y reembolsos en espera · Nota libre en gastos pagados por la casa · Motivo de rechazo visible para la casa'],
   ['2.8', 'Aviso de pago duplicado entre casa y caseta · Catálogo de pagos de caseta con atajos · Pagos programados (semanal, cada 2 semanas, mensual o única vez) que la caseta ve y actualiza'],
@@ -1411,6 +1412,7 @@ V.sistema = () => {
   ${table([{ h: 'Casa', f: r => 'Casa ' + r.num }, { h: 'Propietario', f: r => esc(r.propietario || '') }, { h: 'Teléfono', f: r => esc(r.telefono || '') }, { h: 'PIN', f: r => r.pin ? `<code>${esc(r.pin)}</code>` : (seguro() ? '<span class="tag ok">En la nube</span>' : '') }, { h: 'Cuota propia', num: 1, f: r => r.cuota != null && r.cuota !== '' ? money(r.cuota) : '<span class="muted">general</span>' }, { h: '', f: r => `<button class="btn sm" onclick="A.casa(${r.num})">Editar</button>` }], Array.from({ length: NUM_CASAS }, (_, i) => casaRec(i + 1)).filter(Boolean))}
   <div class="grid2 mt">
     <div class="card"><h3>Respaldo</h3><p class="small muted">Descarga una copia de todos los datos (incluye fotos). Guárdala en tu computadora cada mes.</p><div class="row"><button class="btn primary" onclick="A.exportar()">Descargar respaldo</button><label class="btn">Restaurar respaldo<input type="file" accept=".json" style="display:none" onchange="A.importar(this.files[0])"></label></div></div>
+    <div class="card" style="border-color:rgba(255,125,110,.35)"><h3>Empezar a usarla en serio</h3><p class="small muted">Borra todos los movimientos y datos de prueba en todos los dispositivos. Conserva las casas, la configuración y el catálogo de servicios.</p><div class="row"><button class="btn danger" onclick="A.empezarCero()">Empezar desde cero</button></div></div>
     <div class="card"><h3>Pruebas</h3><p class="small muted">Carga datos de ejemplo para conocer la app. Bórralos antes de empezar a usarla en serio.</p><div class="row"><button class="btn" onclick="A.demo()">Cargar datos de ejemplo</button><button class="btn danger" onclick="A.borrarTodo()">Borrar datos de este dispositivo</button></div></div>
   </div>
   <div class="card mt"><h3>Seguridad y avisos</h3>
@@ -2221,6 +2223,28 @@ A.importar = file => { if (!file) return; const fr = new FileReader(); fr.onload
   COLS.forEach(col => (d.cols[col] || []).forEach(rec => { const i = S.cols[col].findIndex(x => x.id === rec.id); if (i < 0 || num(rec._u) > num(S.cols[col][i]._u)) { if (i < 0) S.cols[col].push(rec); else S.cols[col][i] = rec; S.dirty[col + '|' + rec.id] = rec._u; n++; } }));
   persist(); logEv('Restauró respaldo', n + ' registros', 'cambio'); render(); toast(n + ' registros restaurados');
 } catch (e) { toast('Error: ' + e.message); } }; fr.readAsText(file); };
+const DEMO_NOMBRES = ['Familia García', 'Sra. Elena Ruiz', 'Familia Zompa', 'Familia Torres', 'Sr. Manuel Díaz', 'Familia Herrera', 'Familia López'];
+A.empezarCero = () => {
+  if (!isSistema()) return toast('Solo Sistema puede hacerlo');
+  const borrar = COLS.filter(c => !['config', 'casas', 'servicios'].includes(c));
+  const n = borrar.reduce((a, c) => a + db.all(c).length, 0);
+  openForm('Empezar desde cero', [{ name: 'ok', label: 'Escribe BORRAR para confirmar', required: true, full: true }], async v => {
+    if (v.ok.trim().toUpperCase() !== 'BORRAR') return 'Escribe BORRAR para confirmar';
+    await autoBackup(true);
+    LOG_OFF = true;
+    borrar.forEach(c => db.all(c).forEach(r => db.del(c, r.id)));
+    db.all('casas').forEach(c => { const demo = DEMO_NOMBRES.includes(c.propietario);
+      db.put('casas', demo ? { id: c.id, num: c.num, propietario: '', telefono: '', pin: seguro() ? '' : String(c.num).repeat(4), cuota: null, emergencia: '', notas: '', mayor: false } : { ...c, pin: seguro() ? '' : c.pin }); });
+    const c0 = cfg(); const presDemo = c0.presupuesto && c0.presupuesto['Vigilancia (nómina)'] === 230000;
+    setCfg({ casaAdmin: 1, anio: 2026, perNov: true, ...(presDemo ? { presupuesto: {} } : {}) });
+    S.demo = false; LOG_OFF = false;
+    logEv('Empezó desde cero', n + ' registros borrados · administra Casa 1 desde nov 2026', 'cambio');
+    await persistNow(); if (syncCfg().url) await sync();
+  }, { ok: 'Borrar y empezar', toast: 'Listo: el condominio empieza desde cero',
+    intro: `<p>Se borrarán <b>${n}</b> registros en <b>todos los dispositivos</b>: pagos, cargos, gastos, cajas, vigilantes, pagos programados, visitas, paquetes, apartados, avisos, turnos y bitácora.</p>
+      <p class="small">Se conservan: las 7 casas, la configuración (cuota, PIN) y el catálogo de servicios (CFE, agua, etc.). La administración queda con <b>Casa 1</b>, periodo <b>nov 2026 – oct 2027</b>.</p>
+      <p class="small muted">Antes se guarda un respaldo automático en este dispositivo, por si acaso.</p>` });
+};
 A.borrarTodo = () => confirmar('¿Borrar TODOS los datos de este dispositivo? Si está conectado a la nube, se volverán a descargar.', async () => {
   S = { cols: {}, dirty: {}, lastPull: null }; COLS.forEach(c => S.cols[c] = []); ensureBase(); await persistNow(); logout();
 }, 'Borrar todo');
