@@ -265,6 +265,16 @@ body.modo-admin .top .mark{background:var(--ink);color:var(--brand)}
 .modoSeg button.on.adm{background:var(--brand);color:var(--brand-ink)}
 .modoSeg button i{min-width:20px;height:20px;border-radius:10px;background:var(--bad);color:#fff;font-style:normal;font-size:.72rem;display:grid;place-items:center;padding:0 5px}
 @media (min-width:1024px){.modoSeg{max-width:520px;margin:0 auto .8rem}}
+.cfila{display:grid;grid-template-columns:4.2rem 1rem 1fr 7.5rem;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--line)}
+.cfila:last-child{border-bottom:0}
+.cden{font-weight:700;font-variant-numeric:tabular-nums}.cx{color:var(--muted);text-align:center}
+.cin{border:1px solid var(--line-2);border-radius:12px;padding:.55rem .7rem;background:rgba(var(--tint),.05);width:100%;text-align:center;font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums}
+.cin:focus{outline:none;border-color:var(--accent)}
+.cst{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.ctotal .big{font-size:2.4rem;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin:.15rem 0 .3rem}
+.ctotal{position:sticky;top:calc(64px + env(safe-area-inset-top));z-index:5}
+body.modo-admin .ctotal{top:calc(118px + env(safe-area-inset-top))}
+@media (max-width:420px){.cfila{grid-template-columns:3.6rem .8rem 1fr 6.4rem}}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -381,8 +391,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.3.3';
+const APP_VER = '3.4';
 const NOVEDADES = [
+  ['3.4', 'Conteo de caja: calculadora de billetes y monedas para el administrador'],
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
   ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
   ['3.1', 'Empezar desde cero: borra los movimientos en todos los dispositivos y conserva casas, configuración y catálogo de servicios'],
@@ -930,12 +941,12 @@ const IC = {
 const ic = n => `<svg class="i" viewBox="0 0 24 24">${IC[n] || IC.dot}</svg>`;
 const LOGO_SVG = '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="4.5"/><path class="w" d="M9 27c3.5-3 6.5-3 10 0s6.5 3 10 0 6.5-3 10 0v1a15 15 0 0 1-30 0z" fill="currentColor"/></svg>';
 const brandMark = () => `<div class="brandmark">${LOGO_SVG}<b>el pocito</b></div>`;
-const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', actividad: 'list', areas: 'umbrella', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
-const SHORT = { areas: 'Áreas', micuenta: 'Mi cuenta', visitas: 'Visitas', cuotas: 'Cuotas', bitacora: 'Bitácora', c_casas: 'Casas', c_caja: 'Caja', c_turno: 'Turno' };
+const TAB_IC = { inicio: 'home', micuenta: 'wallet', visitas: 'users', finanzas: 'chart', comunidad: 'chat', panel: 'grid', cuotas: 'coins', gastos: 'receipt', cajas: 'safe', vigilancia: 'shield', bitacora: 'book', servicios: 'wrench', reportes: 'file', conteo: 'cash', actividad: 'list', areas: 'umbrella', sistema: 'gear', c_visitas: 'users', c_paquetes: 'box', c_caja: 'wallet', c_casas: 'phone', c_turno: 'clock' };
+const SHORT = { conteo: 'Conteo', areas: 'Áreas', micuenta: 'Mi cuenta', visitas: 'Visitas', cuotas: 'Cuotas', bitacora: 'Bitácora', c_casas: 'Casas', c_caja: 'Caja', c_turno: 'Turno' };
 
 /* ============ Layout ============ */
 function tabsFor() {
-  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['areas', 'Áreas comunes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['actividad', 'Actividad']];
+  const admin = [['panel', 'Panel'], ['cuotas', 'Cuotas y pagos'], ['gastos', 'Gastos'], ['cajas', 'Cajas'], ['vigilancia', 'Vigilancia'], ['bitacora', 'Visitas y paquetes'], ['areas', 'Áreas comunes'], ['servicios', 'Servicios'], ['reportes', 'Reportes'], ['conteo', 'Conteo de caja'], ['actividad', 'Actividad']];
   if (isCaseta()) return [{ items: [['c_visitas', 'Visitas'], ['c_paquetes', 'Paquetes'], ['c_caja', 'Caja caseta'], ['c_casas', 'Casas y emergencias'], ['c_turno', 'Mi turno']] }];
   if (isSistema()) return [{ t: 'Administración', items: admin }, { t: 'General', items: [['comunidad', 'Comunidad'], ['sistema', 'Sistema']] }];
   if (modoAdmin()) return [{ items: [...admin, ['comunidad', 'Comunidad']] }];
@@ -977,7 +988,7 @@ function render(fromSync) {
     ${isCaseta() ? `<button onclick="A.entregarTurno()">${ic('clock')}<span class="hide-s">Entregar turno</span></button>` : `<button onclick="logout()" title="Salir">${ic('logout')}<span class="hide-s">Salir</span></button>`}</header>
     ${esCasaAdmin() ? `<div class="modoSeg"><button class="${modoAdmin() ? '' : 'on'}" onclick="${modoAdmin() ? "cambiarModo('casa')" : ''}">${ic('home')}<span>Mi casa</span></button><button class="${modoAdmin() ? 'on adm' : ''}" onclick="${modoAdmin() ? '' : "cambiarModo('admin')"}">${ic('grid')}<span>Administración</span>${!modoAdmin() && pendientesAdmin() ? `<i>${pendientesAdmin()}</i>` : ''}</button></div>` : ''}
     <main>${!syncCfg().url ? `<div class="notice">${ic('alert')} <b>Este dispositivo no está conectado a la nube.</b> Lo que se capture aquí no lo verán las demás casas ni el administrador. <button class="link" onclick="A.conectarLink()">Conectar ahora</button></div>` : syncState.ok === false ? `<div class="notice">${ic('alert')} Sin conexión con la nube: ${esc(syncState.msg.replace('Sin conexión con la nube: ', ''))} <button class="link" onclick="syncNow()">Reintentar</button></div>` : ''}${alertas.map(a => `<div class="alert"><span>EMERGENCIA: ${esc(casaLabel(a.casa))} pidió ayuda · ${fdt(a.fecha)}${a.nota ? ' · ' + esc(a.nota) : ''}</span><button class="btn" onclick="A.atenderAlerta('${a.id}')">Marcar como atendida</button></div>`).join('')}${hero}${body}<p class="foot">el pocito · v${APP_VER}</p></main>
-    <button class="fab" onclick="openQuick()" aria-label="Acciones rápidas">${ic('plus')}</button>
+    ${UI.view === 'conteo' ? '' : `<button class="fab" onclick="openQuick()" aria-label="Acciones rápidas">${ic('plus')}</button>`}
     <nav class="bnav">${prim.map(k => { const it = items.find(i => i[0] === k); return `<button class="${UI.view === k ? 'on' : ''}" onclick="go('${k}')"><span class="ic">${ic(TAB_IC[k] || 'dot')}</span><span class="l">${esc(SHORT[k] || it[1])}</span></button>`; }).join('')}
       ${extra ? `<button class="${inMore ? 'on' : ''}" onclick="openMore()"><span class="ic">${ic(inMore ? (TAB_IC[UI.view] || 'grid') : 'grid')}</span><span class="l">${inMore ? esc(SHORT[UI.view] || label) : 'Más'}</span></button>` : ''}</nav>`;
   updSyncDot();
@@ -1539,6 +1550,32 @@ V.areas = () => {
   ${sol.length && (isAdmin() || isCasa()) ? `<div class="card"><h3>${isAdmin() ? 'Solicitudes por autorizar' : 'Solicitudes pendientes'}</h3><div class="list">${sol.filter(r => isAdmin() || r.casa == SES.casa).map(resItem).join('') || '<p class="muted small">Ninguna tuya</p>'}</div></div>` : ''}
   <div class="row" style="margin-bottom:.8rem">${seg('areas', opts, 'prox')}</div>
   ${xs.length ? `<div class="list">${xs.slice(0, 80).map(resItem).join('')}</div>` : '<div class="tw"><div class="empty">Nada por aquí</div></div>'}`;
+};
+
+/* ---- Conteo de caja (solo calculadora, no guarda movimientos) ---- */
+const DENOM = { billetes: [1000, 500, 200, 100, 50, 20], monedas: [20, 10, 5, 2, 1, 0.5] };
+const denLbl = d => d < 1 ? '50¢' : '$' + NF.format(d).replace('.00', '');
+function conteoGet() { try { return LS.get('pocito_conteo') || {}; } catch (e) { return {}; } }
+function conteoCalc() {
+  const c = conteoGet(); let tb = 0, tm = 0;
+  DENOM.billetes.forEach(d => { const n = +c['b' + d] || 0, st = n * d; tb += st; const el = document.getElementById('st_b' + d); if (el) el.textContent = money(st); });
+  DENOM.monedas.forEach(d => { const n = +c['m' + d] || 0, st = n * d; tm += st; const el = document.getElementById('st_m' + d); if (el) el.textContent = money(st); });
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = money(v); };
+  set('ct_b', tb); set('ct_m', tm); set('ct_t', tb + tm);
+}
+function conteoSet(k, el) { el.value = el.value.replace(/[^0-9]/g, '').slice(0, 5); const c = conteoGet(); c[k] = el.value; LS.set('pocito_conteo', c); conteoCalc(); }
+function conteoLimpiar() { LS.set('pocito_conteo', {}); render(); }
+V.conteo = () => {
+  const c = conteoGet();
+  const fila = (k, d) => `<div class="cfila"><span class="cden">${denLbl(d)}</span><span class="cx">×</span><input class="cin" type="text" inputmode="numeric" placeholder="0" value="${esc(c[k] || '')}" oninput="conteoSet('${k}',this)" onfocus="this.select()" aria-label="Cantidad de ${denLbl(d)}"><span class="cst" id="st_${k}">$0.00</span></div>`;
+  setTimeout(conteoCalc, 0);
+  return `<div class="sect"><h2>Conteo de caja</h2><button class="btn" onclick="conteoLimpiar()">Limpiar</button></div>
+  <p class="small muted">Solo es una calculadora: escribe cuántas piezas hay de cada denominación. No registra ningún movimiento.</p>
+  <div class="card ctotal"><div class="lbl">Total contado</div><div class="big" id="ct_t">$0.00</div><div class="row small muted" style="gap:1rem"><span>Billetes: <b id="ct_b">$0.00</b></span><span>Monedas: <b id="ct_m">$0.00</b></span></div></div>
+  <div class="grid2">
+    <div class="card"><h3>Billetes</h3>${DENOM.billetes.map(d => fila('b' + d, d)).join('')}</div>
+    <div class="card"><h3>Monedas</h3>${DENOM.monedas.map(d => fila('m' + d, d)).join('')}</div>
+  </div>`;
 };
 
 /* ============ Vistas: Caseta (tableta) ============ */
