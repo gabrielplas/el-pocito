@@ -265,6 +265,9 @@ body.modo-admin .top .mark{background:var(--ink);color:var(--brand)}
 .modoSeg button.on.adm{background:var(--brand);color:var(--brand-ink)}
 .modoSeg button i{min-width:20px;height:20px;border-radius:10px;background:var(--bad);color:#fff;font-style:normal;font-size:.72rem;display:grid;place-items:center;padding:0 5px}
 @media (min-width:1024px){.modoSeg{max-width:520px;margin:0 auto .8rem}}
+.ccomp{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line-2)}
+.cdif{margin-top:.5rem;border-radius:12px;padding:.55rem .8rem;font-weight:600;text-align:center;background:rgba(var(--tint),.06)}
+.cdif.ok{background:var(--ok-soft);color:var(--ok)}.cdif.warn{background:var(--warn-soft);color:var(--warn)}.cdif.bad{background:var(--bad-soft);color:var(--bad)}
 .cfila{display:grid;grid-template-columns:4.2rem 1rem 1fr 7.5rem;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--line)}
 .cfila:last-child{border-bottom:0}
 .cden{font-weight:700;font-variant-numeric:tabular-nums}.cx{color:var(--muted);text-align:center}
@@ -391,7 +394,7 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.4';
+const APP_VER = '3.4.1';
 const NOVEDADES = [
   ['3.4', 'Conteo de caja: calculadora de billetes y monedas para el administrador'],
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
@@ -1562,6 +1565,9 @@ function conteoCalc() {
   DENOM.monedas.forEach(d => { const n = +c['m' + d] || 0, st = n * d; tm += st; const el = document.getElementById('st_m' + d); if (el) el.textContent = money(st); });
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = money(v); };
   set('ct_b', tb); set('ct_m', tm); set('ct_t', tb + tm);
+  const sis = saldoCuenta('chica'), dif = Math.round((tb + tm - sis) * 100) / 100, de = document.getElementById('ct_dif');
+  set('ct_sis', sis);
+  if (de) { de.className = 'cdif ' + (Math.abs(dif) < 0.005 ? 'ok' : dif > 0 ? 'warn' : 'bad'); de.innerHTML = Math.abs(dif) < 0.005 ? 'Cuadra con caja chica' : (dif > 0 ? 'Sobran ' : 'Faltan ') + '<b>' + money(Math.abs(dif)) + '</b>'; }
 }
 function conteoSet(k, el) { el.value = el.value.replace(/[^0-9]/g, '').slice(0, 5); const c = conteoGet(); c[k] = el.value; LS.set('pocito_conteo', c); conteoCalc(); }
 function conteoLimpiar() { LS.set('pocito_conteo', {}); render(); }
@@ -1570,8 +1576,9 @@ V.conteo = () => {
   const fila = (k, d) => `<div class="cfila"><span class="cden">${denLbl(d)}</span><span class="cx">×</span><input class="cin" type="text" inputmode="numeric" placeholder="0" value="${esc(c[k] || '')}" oninput="conteoSet('${k}',this)" onfocus="this.select()" aria-label="Cantidad de ${denLbl(d)}"><span class="cst" id="st_${k}">$0.00</span></div>`;
   setTimeout(conteoCalc, 0);
   return `<div class="sect"><h2>Conteo de caja</h2><button class="btn" onclick="conteoLimpiar()">Limpiar</button></div>
-  <p class="small muted">Solo es una calculadora: escribe cuántas piezas hay de cada denominación. No registra ningún movimiento.</p>
-  <div class="card ctotal"><div class="lbl">Total contado</div><div class="big" id="ct_t">$0.00</div><div class="row small muted" style="gap:1rem"><span>Billetes: <b id="ct_b">$0.00</b></span><span>Monedas: <b id="ct_m">$0.00</b></span></div></div>
+  <p class="small muted">Escribe cuántas piezas hay de cada denominación y compáralo con lo que dice el sistema para caja chica. No registra ningún movimiento.</p>
+  <div class="card ctotal"><div class="lbl">Total contado</div><div class="big" id="ct_t">$0.00</div><div class="row small muted" style="gap:1rem"><span>Billetes: <b id="ct_b">$0.00</b></span><span>Monedas: <b id="ct_m">$0.00</b></span></div>
+    <div class="ccomp"><div class="row sp"><span class="muted">Caja chica según el sistema</span><b id="ct_sis">$0.00</b></div><div id="ct_dif" class="cdif">—</div></div></div>
   <div class="grid2">
     <div class="card"><h3>Billetes</h3>${DENOM.billetes.map(d => fila('b' + d, d)).join('')}</div>
     <div class="card"><h3>Monedas</h3>${DENOM.monedas.map(d => fila('m' + d, d)).join('')}</div>
