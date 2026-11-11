@@ -375,7 +375,39 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0ms!important;transition-duration:.01ms!important}
 }
+#printArea{display:none}
+html.imprimiendo,html.imprimiendo body{background:#fff!important;transition:none!important;color-scheme:light!important}
 @media print{
+  @page{size:letter;margin:12mm 11mm}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  body.imprimiendo>*:not(#printArea){display:none!important}
+  body.imprimiendo #printArea{display:block!important}
+  html,body.imprimiendo{background:#fff!important;color:#111!important}
+  body.imprimiendo{margin:0!important;padding:0!important;min-height:0!important;overflow:visible!important;width:auto!important}
+  #printArea,.pr{width:100%;max-width:100%;box-sizing:border-box}
+  .pr{padding:0}
+  .pr *{box-sizing:border-box;min-width:0}
+  .pr .p2>div,.pr .pk>div{min-width:0}
+  .pr{font-family:"Manrope",-apple-system,Arial,sans-serif;color:#111;font-size:10.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pr .ph{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}
+  .pr .pt1{font-size:20pt;font-weight:700;letter-spacing:-.02em}.pr .pt2{font-size:11pt;color:#444;margin-top:2px}
+  .pr .pmeta{text-align:right;font-size:8.5pt;color:#555;line-height:1.4}
+  .pr .pk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .pr .pk div{border:1px solid #ccc;border-radius:8px;padding:8px 10px}.pr .pk span{display:block;font-size:8.5pt;color:#555}.pr .pk b{font-size:13pt}
+  .pr .p2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .pr .pc{border:1px solid #ccc;border-radius:8px;padding:10px;break-inside:avoid}
+  .pr h4{margin:0 0 8px;font-size:11pt}
+  .pr .pcat{margin:6px 0}.pr .pcat div{display:flex;justify-content:space-between}.pr .pcat em{font-style:normal;color:#666;font-weight:400;margin-left:4px}
+  .pr .pcat i{display:block;height:6px;background:#eee;border-radius:4px;margin-top:3px;overflow:hidden}.pr .pcat u{display:block;height:100%;background:#4a6b00}
+  .pr table{width:100%;border-collapse:collapse}
+  .pr .pcas td{padding:4px 0;border-bottom:1px solid #eee}
+  .pr .pt{font-size:8.5pt;padding:1px 7px;border-radius:10px;white-space:nowrap}.pr .pt.w{background:#fbefd6;color:#7a4b00}.pr .pt.o{background:#e1f3e8;color:#1f6b3f}
+  .pr .pdh{margin-top:4px}
+  .pr .ptab th{text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.04em;color:#555;border-bottom:1.5px solid #111;padding:5px 6px}
+  .pr .ptab td{padding:5px 6px;border-bottom:1px solid #e3e3e3;vertical-align:top}
+  .pr .ptab tr{break-inside:avoid}.pr .ptab thead{display:table-header-group}
+  .pr .ptab .ptot td{font-weight:700;border-top:1.5px solid #111;border-bottom:0}
+  .pr .r{text-align:right}.pr .nw{white-space:nowrap}.pr .pm{color:#666;font-size:8.5pt}
   :root{--bg:#fff;--card:#fff;--card-2:#fff;--ink:#111;--muted:#555;--line:#ddd;--line-2:#ccc;--brand:#1f4d3a}
   .top,nav.bnav,.fab,.bmenu,.noprint,.btn,.toast,.splash{display:none!important}
   body,html{background:#fff;color:#111}
@@ -394,8 +426,9 @@ html[data-theme="light"] .alert .btn{color:#7a1a10}
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.4.1';
+const APP_VER = '3.5';
 const NOVEDADES = [
+  ['3.5', 'Finanzas: exportar el reporte del mes en PDF'],
   ['3.4', 'Conteo de caja: calculadora de billetes y monedas para el administrador'],
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
   ['3.2', 'Varios usuarios por casa, cada uno con su PIN · Registrar pago del administrador con concepto (cuota del mes, extraordinaria o ambas) y Efectivo/Caja chica por defecto'],
@@ -1187,12 +1220,40 @@ function visitasTable(rows, conCasa = true, acciones = false) {
     { h: 'Nota', f: v => esc(v.nota || '') + (v.foto ? ' ' + fileBtn(v.foto) : '') }
   ], rows, null, 'Sin visitas registradas');
 }
+function exportarFinanzas() {
+  const m = UI.f.finMes || ym(), c = cfg();
+  const g = sortBy(gastosValidos().filter(x => ym(x.fecha) === m), 'fecha', false);
+  const porCat = CATS.map(k => [k, sum(g.filter(x => x.categoria === k))]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+  const total = sum(g);
+  const pagadoDe = x => x.cuenta === 'condomino' ? 'Casa ' + x.casaPaga + (x.reposicion === 'reembolso' ? ' (reembolso)' : ' (a cuenta de cuotas)') : (CUENTAS[x.cuenta] || x.cuenta) + (x.reembolso === 'pagado' ? ' · reembolso a Casa ' + x.casaPaga : '');
+  const casas = Array.from({ length: NUM_CASAS }, (_, i) => { const n = i + 1, sd = saldoCasa(n); return `<tr><td>${esc(casaLabel(n))}</td><td class="r">${sd > 0.009 ? '<span class="pt w">Debe ' + money(sd) + '</span>' : sd < -0.009 ? '<span class="pt o">A favor ' + money(-sd) + '</span>' : '<span class="pt o">Al corriente</span>'}</td></tr>`; }).join('');
+  const html = `<div class="pr">
+    <div class="ph"><div><div class="pt1">Finanzas del condominio</div><div class="pt2">${esc(c.nombre)} · ${esc(mesLabel(m))}</div></div>
+      <div class="pmeta">Administración ${esc(perLabel(c.anio))}<br>Administra: ${esc(casaLabel(c.casaAdmin))}<br>Generado ${esc(fdt(new Date().toISOString()))} por ${esc(quien())}</div></div>
+    <div class="pk">${Object.keys(CUENTAS).map(k => `<div><span>${esc(CUENTAS[k])}</span><b>${money(saldoCuenta(k))}</b></div>`).join('')}<div><span>Gastos de ${esc(mesLabel(m))}</span><b>${money(total)}</b></div></div>
+    <div class="p2">
+      <div class="pc"><h4>Gastos por categoría</h4>${porCat.length ? porCat.map(([k, v]) => `<div class="pcat"><div><span>${esc(k)}</span><b>${money(v)} <em>${Math.round(v / total * 100)}%</em></b></div><i><u style="width:${Math.max(1, Math.round(v / total * 100))}%"></u></i></div>`).join('') : '<p class="pm">Sin gastos este mes</p>'}</div>
+      <div class="pc"><h4>Estado de cuenta por casa</h4><table class="pcas">${casas}</table></div>
+    </div>
+    <h4 class="pdh">Detalle de gastos · ${esc(mesLabel(m))}</h4>
+    <table class="ptab"><thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Pagado de</th><th class="r">Monto</th><th>Comp.</th></tr></thead><tbody>
+      ${g.length ? g.map(x => `<tr><td class="nw">${esc(fdate(x.fecha))}</td><td>${esc(x.categoria)}</td><td>${esc(x.concepto)}${x.proveedor ? `<div class="pm">${esc(x.proveedor)}</div>` : ''}${x.detalle ? `<div class="pm">Nota: ${esc(x.detalle)}</div>` : ''}</td><td>${esc(pagadoDe(x))}</td><td class="r nw">${money(x.monto)}</td><td>${x.comprobante ? 'Sí' : '—'}</td></tr>`).join('') : '<tr><td colspan="6" class="pm">Sin gastos</td></tr>'}
+      <tr class="ptot"><td colspan="4">Total</td><td class="r nw">${money(total)}</td><td></td></tr></tbody></table>
+  </div>`;
+  let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
+  pa.innerHTML = html;
+  const t0 = document.title; document.title = 'Finanzas ' + c.nombre + ' ' + mesLabel(m);
+  document.body.classList.add('imprimiendo'); document.documentElement.classList.add('imprimiendo');
+  const fin = () => { document.body.classList.remove('imprimiendo'); document.documentElement.classList.remove('imprimiendo'); document.title = t0; window.removeEventListener('afterprint', fin); };
+  window.addEventListener('afterprint', fin);
+  setTimeout(() => { window.print(); setTimeout(fin, 1500); }, 50);
+}
 V.finanzas = () => {
   const m = UI.f.finMes || ym();
   const g = gastosValidos().filter(x => ym(x.fecha) === m);
   const porCat = CATS.map(c => [c, sum(g.filter(x => x.categoria === c))]).filter(x => x[1] > 0);
   const total = sum(g);
-  return `<div class="sect"><h2>Finanzas del condominio</h2>${mesFiltro('finMes')}</div>
+  return `<div class="sect"><h2>Finanzas del condominio</h2><div class="row" style="align-items:flex-end">${mesFiltro('finMes')}<button class="btn primary" onclick="exportarFinanzas()">${ic('file')} Exportar PDF</button></div></div>
   <div class="kpis">${Object.keys(CUENTAS).map(k => kpi(CUENTAS[k], money(saldoCuenta(k)), saldoCuenta(k) < 0 ? 'bad' : '')).join('')}${kpi('Gastos de ' + mesLabel(m), money(total))}</div>
   <div class="grid2"><div class="card"><h3>Gastos por categoría</h3>${porCat.length ? porCat.map(([c, v]) => `<div class="row sp small" style="margin:.35rem 0"><span>${esc(c)}</span><b>${money(v)}</b></div><div class="bar"><i style="width:${Math.round(v / total * 100)}%"></i></div>`).join('') : '<p class="muted">Sin gastos este mes</p>'}</div>
   <div class="card"><h3>Estado de cuenta por casa</h3>${Array.from({ length: NUM_CASAS }, (_, i) => { const s = saldoCasa(i + 1); return `<div class="row sp" style="margin:.3rem 0"><span>Casa ${i + 1}</span>${s > 0.009 ? `<span class="tag warn">Debe ${money(s)}</span>` : s < -0.009 ? `<span class="tag ok">A favor ${money(-s)}</span>` : '<span class="tag ok">Al corriente</span>'}</div>`; }).join('')}</div></div>
