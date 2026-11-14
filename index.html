@@ -268,16 +268,23 @@ body.modo-admin .top .mark{background:var(--ink);color:var(--brand)}
 .ccomp{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line-2)}
 .cdif{margin-top:.5rem;border-radius:12px;padding:.55rem .8rem;font-weight:600;text-align:center;background:rgba(var(--tint),.06)}
 .cdif.ok{background:var(--ok-soft);color:var(--ok)}.cdif.warn{background:var(--warn-soft);color:var(--warn)}.cdif.bad{background:var(--bad-soft);color:var(--bad)}
-.cfila{display:grid;grid-template-columns:4.2rem 1rem 1fr 7.5rem;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--line)}
+.cfila{display:grid;grid-template-columns:3.8rem 4.6rem auto 1fr;align-items:center;gap:.5rem;padding:.45rem 0;border-bottom:1px solid var(--line)}
 .cfila:last-child{border-bottom:0}
-.cden{font-weight:700;font-variant-numeric:tabular-nums}.cx{color:var(--muted);text-align:center}
-.cin{border:1px solid var(--line-2);border-radius:12px;padding:.55rem .7rem;background:rgba(var(--tint),.05);width:100%;text-align:center;font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums}
-.cin:focus{outline:none;border-color:var(--accent)}
+.cden{font-weight:700;font-variant-numeric:tabular-nums}
+.cin{border:1px solid var(--line-2);border-radius:12px;padding:.55rem .4rem;background:rgba(var(--tint),.05);width:100%;text-align:center;font-weight:700;font-size:1.05rem;font-variant-numeric:tabular-nums;transition:transform .25s var(--spring)}
+.cin.pop{animation:cpop .3s var(--spring)}@keyframes cpop{50%{transform:scale(1.12)}}
+.cin:focus,.cps:focus{outline:none;border-color:var(--accent)}
+.cpaso{display:inline-flex;align-items:center;gap:.25rem;background:rgba(var(--tint),.04);border:1px solid var(--line);border-radius:999px;padding:3px}
+.cbt{width:34px;height:34px;border-radius:50%;border:0;background:rgba(var(--tint),.1);color:var(--ink);font-size:1.25rem;font-weight:700;cursor:pointer;line-height:1;transition:transform .15s var(--spring),background .15s}
+.cbt:active{transform:scale(.88);background:var(--brand);color:var(--brand-ink)}
+.cps{width:2.8rem;border:1px solid var(--line-2);border-radius:10px;padding:.35rem .2rem;background:transparent;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
 .cst{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
 .ctotal .big{font-size:2.4rem;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin:.15rem 0 .3rem}
 .ctotal{position:sticky;top:calc(64px + env(safe-area-inset-top));z-index:5}
 body.modo-admin .ctotal{top:calc(118px + env(safe-area-inset-top))}
-@media (max-width:420px){.cfila{grid-template-columns:3.6rem .8rem 1fr 6.4rem}}
+.atab{width:100%;border-collapse:collapse;margin-top:.5rem}.atab th{font-size:.72rem;text-transform:uppercase;color:var(--muted);text-align:left;padding:.35rem .3rem;border-bottom:1px solid var(--line-2)}
+.atab td{padding:.35rem .3rem;border-bottom:1px solid var(--line)}.atab .r{text-align:right}.atab .nw{white-space:nowrap}.atab .ptot td{font-weight:700;border-top:1px solid var(--line-2);border-bottom:0}
+@media (max-width:480px){.cfila{grid-template-columns:3.2rem 1fr auto;grid-template-areas:"d i p" "d s s"}.cden{grid-area:d}.cin{grid-area:i}.cpaso{grid-area:p}.cst{grid-area:s;font-size:.85rem}}
 .foot{text-align:center;color:var(--muted);font-size:.75rem;margin:2rem 0 0;opacity:.7}
 .modal .mact{position:sticky;bottom:0;background:var(--bg-2);padding-top:.6rem;margin-bottom:-.2rem}
 .modal input[readonly]{width:100%}
@@ -426,8 +433,9 @@ html.imprimiendo,html.imprimiendo body{background:#fff!important;transition:none
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.5';
+const APP_VER = '3.6';
 const NOVEDADES = [
+  ['3.6', 'Conteo de caja con botones + y − por denominación · Guardar conteo en bitácora y cuadrarlo contra los movimientos de caja chica con fecha y hora'],
   ['3.5', 'Finanzas: exportar el reporte del mes en PDF'],
   ['3.4', 'Conteo de caja: calculadora de billetes y monedas para el administrador'],
   ['3.3', 'La casa administradora cambia entre "Mi casa" y "Administración" con un botón; cada perfil tiene su inicio, pantallas y menús'],
@@ -446,7 +454,7 @@ const NOVEDADES = [
   ['2.0', 'Nuevo diseño · Modo claro y oscuro · Letra grande · Montos en $ · Periodo de administración nov–oct']
 ];
 const COLS = ['config','casas','cargos','abonos','ingresos','gastos','transferencias','vigilantes','ausencias','turnos',
-  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs','reservas','destinos'];
+  'visitas','preregistros','frecuentes','paquetes','avisos','votos','incidencias','documentos','directorio','servicios','alertas','logs','reservas','destinos','arqueos'];
 const CUENTAS = { banco: 'Cuenta bancaria', chica: 'Caja chica', vigilante: 'Fondo caseta' };
 const CATS = ['Vigilancia (nómina)','Coberturas / reemplazos','IMSS','Basura','Jardinería','CFE (luz)','Agua','Mantenimiento',
   'Limpieza','Administración / papelería','Extraordinario','Otros'];
@@ -509,7 +517,7 @@ async function autoBackup(force) {
 }
 /* ============ Bitácora del sistema ============ */
 let LOG_OFF = false;
-const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común', destinos: 'pago programado de caseta' };
+const COL_LBL = { config: 'configuración', casas: 'datos de casa', cargos: 'cargo / cuota', abonos: 'pago', ingresos: 'ingreso', gastos: 'gasto', transferencias: 'traspaso entre cajas', vigilantes: 'vigilante', ausencias: 'ausencia / cobertura', turnos: 'turno', visitas: 'visita', preregistros: 'aviso de visita', frecuentes: 'autorizado permanente', paquetes: 'paquete', avisos: 'aviso', votos: 'voto', incidencias: 'problema reportado', documentos: 'documento', directorio: 'contacto', servicios: 'servicio', alertas: 'emergencia', reservas: 'apartado de área común', destinos: 'pago programado de caseta', arqueos: 'conteo de caja' };
 function dispositivo() { const u = navigator.userAgent; return /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /iPhone/.test(u) ? 'iPhone' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android' : 'Tableta Android') : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : 'Otro'; }
 function logEv(accion, detalle = '', tipo = 'acceso') {
   try { db.put('logs', { fecha: new Date().toISOString(), quien: SES ? quien() : 'Sin sesión', accion, detalle: String(detalle).slice(0, 200), tipo, disp: dispositivo(), ver: APP_VER }); } catch (e) { }
@@ -690,13 +698,13 @@ function saldoCasa(n) {
 }
 function movimientos(c) {
   const m = [];
-  db.all('abonos').forEach(a => { if (a.estado === 'confirmado' && a.cuenta === c) m.push({ fecha: a.fecha, concepto: 'Pago ' + casaLabel(a.casa) + (a.nota ? ' – ' + a.nota : ''), ent: num(a.monto) }); });
-  db.all('ingresos').forEach(i => { if (i.cuenta === c) m.push({ fecha: i.fecha, concepto: i.concepto, ent: num(i.monto) }); });
+  db.all('abonos').forEach(a => { if (a.estado === 'confirmado' && a.cuenta === c) m.push({ fecha: a.fecha, ts: a.confirmadoEn || a.creado, concepto: 'Pago ' + casaLabel(a.casa) + (a.nota ? ' – ' + a.nota : ''), ent: num(a.monto) }); });
+  db.all('ingresos').forEach(i => { if (i.cuenta === c) m.push({ fecha: i.fecha, ts: i.creado, concepto: i.concepto, ent: num(i.monto) }); });
   db.all('transferencias').forEach(t => {
-    if (t.a === c) m.push({ fecha: t.fecha, concepto: 'Recibido de ' + CUENTAS[t.de] + (t.nota ? ' – ' + t.nota : ''), ent: num(t.monto) });
-    if (t.de === c) m.push({ fecha: t.fecha, concepto: 'Enviado a ' + CUENTAS[t.a] + (t.nota ? ' – ' + t.nota : ''), sal: num(t.monto) });
+    if (t.a === c) m.push({ fecha: t.fecha, ts: t.creado, concepto: 'Recibido de ' + CUENTAS[t.de] + (t.nota ? ' – ' + t.nota : ''), ent: num(t.monto) });
+    if (t.de === c) m.push({ fecha: t.fecha, ts: t.creado, concepto: 'Enviado a ' + CUENTAS[t.a] + (t.nota ? ' – ' + t.nota : ''), sal: num(t.monto) });
   });
-  gastosValidos().forEach(g => { if (g.cuenta === c) m.push({ fecha: g.fecha, concepto: g.categoria + ' – ' + g.concepto, sal: num(g.monto), g }); });
+  gastosValidos().forEach(g => { if (g.cuenta === c) m.push({ fecha: g.fecha, ts: g.reembolsadoEn && g.reembolso === 'pagado' ? g._u && new Date(g._u).toISOString() : g.creado, concepto: g.categoria + ' – ' + g.concepto, sal: num(g.monto), g }); });
   m.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
   let s = 0; m.forEach(x => { s += num(x.ent) - num(x.sal); x.saldo = s; });
   return m;
@@ -1631,18 +1639,66 @@ function conteoCalc() {
   if (de) { de.className = 'cdif ' + (Math.abs(dif) < 0.005 ? 'ok' : dif > 0 ? 'warn' : 'bad'); de.innerHTML = Math.abs(dif) < 0.005 ? 'Cuadra con caja chica' : (dif > 0 ? 'Sobran ' : 'Faltan ') + '<b>' + money(Math.abs(dif)) + '</b>'; }
 }
 function conteoSet(k, el) { el.value = el.value.replace(/[^0-9]/g, '').slice(0, 5); const c = conteoGet(); c[k] = el.value; LS.set('pocito_conteo', c); conteoCalc(); }
+function conteoPaso(k, signo) {
+  const c = conteoGet(), st = document.getElementById('ps_' + k), paso = Math.max(1, parseInt(st && st.value, 10) || 1);
+  const n = Math.max(0, (parseInt(c[k], 10) || 0) + signo * paso); c[k] = n ? String(n) : ''; LS.set('pocito_conteo', c);
+  const inp = document.getElementById('in_' + k); if (inp) { inp.value = c[k]; inp.classList.remove('pop'); void inp.offsetWidth; inp.classList.add('pop'); }
+  conteoCalc();
+}
 function conteoLimpiar() { LS.set('pocito_conteo', {}); render(); }
+function conteoTotales(c) { const det = []; let tb = 0, tm = 0;
+  DENOM.billetes.forEach(d => { const n = +c['b' + d] || 0; if (n) det.push({ t: 'billete', d, n }); tb += n * d; });
+  DENOM.monedas.forEach(d => { const n = +c['m' + d] || 0; if (n) det.push({ t: 'moneda', d, n }); tm += n * d; });
+  return { det, tb: Math.round(tb * 100) / 100, tm: Math.round(tm * 100) / 100, total: Math.round((tb + tm) * 100) / 100 }; }
+const arqueosOrd = () => sortBy(db.all('arqueos'), 'ts');
+function cuadreArqueo(a) {
+  const prev = arqueosOrd().filter(x => x.ts < a.ts)[0];
+  const mv = movimientos('chica').filter(x => x.ts && x.ts <= a.ts && (!prev || x.ts > prev.ts)).sort((x, y) => x.ts < y.ts ? -1 : 1);
+  const ent = sum(mv, x => x.ent), sal = sum(mv, x => x.sal);
+  const esperado = prev ? Math.round((num(prev.total) + ent - sal) * 100) / 100 : null;
+  return { prev, mv, ent, sal, esperado, difPrev: esperado == null ? null : Math.round((num(a.total) - esperado) * 100) / 100 };
+}
+const difTxt = d => Math.abs(d) < 0.005 ? '<span class="tag ok">Cuadra</span>' : d > 0 ? `<span class="tag warn">Sobran ${money(d)}</span>` : `<span class="tag bad">Faltan ${money(-d)}</span>`;
+function guardarConteo() {
+  const t = conteoTotales(conteoGet());
+  if (!t.total) return toast('El conteo está en ceros');
+  const sis = saldoCuenta('chica'), dif = Math.round((t.total - sis) * 100) / 100;
+  openForm('Guardar conteo en bitácora', [{ name: 'nota', label: 'Nota (opcional)', full: true, placeholder: 'Ej. arqueo de cierre de semana' }], v => {
+    db.put('arqueos', { ts: new Date().toISOString(), fecha: today(), caja: 'chica', detalle: t.det, billetes: t.tb, monedas: t.tm, total: t.total, sistema: sis, diferencia: dif, nota: v.nota, registradoPor: quien() });
+  }, { ok: 'Guardar', toast: 'Conteo guardado en la bitácora',
+    intro: `<div class="ccomp" style="border:0;margin:0;padding:0"><div class="row sp"><span>Contado</span><b>${money(t.total)}</b></div><div class="row sp"><span class="muted">Caja chica según el sistema</span><b>${money(sis)}</b></div><div style="margin-top:.4rem">${difTxt(dif)}</div><p class="small muted mt">Se guarda con la fecha y hora de este momento: ${esc(fdt(new Date().toISOString()))}.</p></div>` });
+};
+function verArqueo(id) {
+  const a = db.get('arqueos', id), q = cuadreArqueo(a);
+  modal(`<h3>Conteo del ${esc(fdt(a.ts))}</h3><p class="small muted">${esc(a.registradoPor || '')}${a.nota ? ' · ' + esc(a.nota) : ''}</p>
+    <table class="atab"><thead><tr><th>Denominación</th><th class="r">Piezas</th><th class="r">Importe</th></tr></thead><tbody>
+    ${(a.detalle || []).map(x => `<tr><td>${x.t === 'billete' ? 'Billete' : 'Moneda'} ${denLbl(x.d)}</td><td class="r">${x.n}</td><td class="r">${money(x.n * x.d)}</td></tr>`).join('')}
+    <tr class="ptot"><td>Total contado</td><td></td><td class="r">${money(a.total)}</td></tr></tbody></table>
+    <div class="ccomp"><div class="row sp"><span class="muted">Caja chica según el sistema en ese momento</span><b>${money(a.sistema)}</b></div><div style="margin-top:.3rem">${difTxt(num(a.diferencia))}</div></div>
+    <div class="ccomp"><b>Cuadre contra el conteo anterior</b>
+      ${q.prev ? `<div class="row sp small mt"><span>Conteo anterior (${esc(fdt(q.prev.ts))})</span><b>${money(q.prev.total)}</b></div>
+      <div class="row sp small"><span>+ Entradas registradas</span><b>${money(q.ent)}</b></div><div class="row sp small"><span>− Salidas registradas</span><b>${money(q.sal)}</b></div>
+      <div class="row sp small"><span>= Debería haber</span><b>${money(q.esperado)}</b></div><div class="row sp small"><span>Se contó</span><b>${money(a.total)}</b></div><div style="margin-top:.3rem">${difTxt(q.difPrev)}</div>` : '<p class="small muted mt">Es el primer conteo guardado; el siguiente se cuadrará contra este.</p>'}
+      ${q.mv.length ? `<div class="dsh mt">Movimientos de caja chica en ese lapso</div><table class="atab"><tbody>${q.mv.map(x => `<tr><td class="nw small">${esc(fdt(x.ts))}</td><td class="small">${esc(x.concepto)}</td><td class="r nw small">${x.ent ? '+' + money(x.ent) : '−' + money(x.sal)}</td></tr>`).join('')}</tbody></table>` : q.prev ? '<p class="small muted">Sin movimientos registrados entre los dos conteos.</p>' : ''}</div>
+    <div class="mact">${isAdmin() ? `<button class="btn ghost" onclick="closeModal();A.borrar('arqueos','${a.id}')">Borrar</button>` : ''}<button class="btn primary" onclick="closeModal()">Cerrar</button></div>`, true);
+};
 V.conteo = () => {
   const c = conteoGet();
-  const fila = (k, d) => `<div class="cfila"><span class="cden">${denLbl(d)}</span><span class="cx">×</span><input class="cin" type="text" inputmode="numeric" placeholder="0" value="${esc(c[k] || '')}" oninput="conteoSet('${k}',this)" onfocus="this.select()" aria-label="Cantidad de ${denLbl(d)}"><span class="cst" id="st_${k}">$0.00</span></div>`;
+  const fila = (k, d) => `<div class="cfila"><span class="cden">${denLbl(d)}</span><input class="cin" id="in_${k}" type="text" inputmode="numeric" placeholder="0" value="${esc(c[k] || '')}" oninput="conteoSet('${k}',this)" onfocus="this.select()" aria-label="Piezas de ${denLbl(d)}">
+    <span class="cpaso"><button type="button" class="cbt" onclick="conteoPaso('${k}',-1)" aria-label="Quitar">−</button><input class="cps" id="ps_${k}" type="text" inputmode="numeric" value="1" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)" onfocus="this.select()" aria-label="Cuántas agregar o quitar"><button type="button" class="cbt" onclick="conteoPaso('${k}',1)" aria-label="Agregar">+</button></span>
+    <span class="cst" id="st_${k}">$0.00</span></div>`;
+  const ar = arqueosOrd().slice(0, 30);
   setTimeout(conteoCalc, 0);
-  return `<div class="sect"><h2>Conteo de caja</h2><button class="btn" onclick="conteoLimpiar()">Limpiar</button></div>
-  <p class="small muted">Escribe cuántas piezas hay de cada denominación y compáralo con lo que dice el sistema para caja chica. No registra ningún movimiento.</p>
+  return `<div class="sect"><h2>Conteo de caja</h2><div class="row"><button class="btn" onclick="conteoLimpiar()">Limpiar</button><button class="btn primary" onclick="guardarConteo()">${ic('list')} Guardar en bitácora</button></div></div>
+  <p class="small muted">Escribe las piezas o usa − y + para quitar o agregar la cantidad del recuadro de al lado (1 por defecto). Al guardar, el conteo queda en la bitácora con fecha y hora.</p>
   <div class="card ctotal"><div class="lbl">Total contado</div><div class="big" id="ct_t">$0.00</div><div class="row small muted" style="gap:1rem"><span>Billetes: <b id="ct_b">$0.00</b></span><span>Monedas: <b id="ct_m">$0.00</b></span></div>
     <div class="ccomp"><div class="row sp"><span class="muted">Caja chica según el sistema</span><b id="ct_sis">$0.00</b></div><div id="ct_dif" class="cdif">—</div></div></div>
   <div class="grid2">
     <div class="card"><h3>Billetes</h3>${DENOM.billetes.map(d => fila('b' + d, d)).join('')}</div>
     <div class="card"><h3>Monedas</h3>${DENOM.monedas.map(d => fila('m' + d, d)).join('')}</div>
+  </div>
+  <div class="card mt"><h3>Bitácora de conteos</h3>
+    ${ar.length ? `<div class="list">${ar.map(a => { const q = cuadreArqueo(a); return `<button class="item" style="text-align:left;cursor:pointer;width:100%;color:inherit;font:inherit" onclick="verArqueo('${a.id}')"><div><div class="t">${esc(fdt(a.ts))} · ${money(a.total)}</div><div class="small muted">${esc(a.registradoPor || '')} · caja chica en sistema ${money(a.sistema)}${q.prev ? ' · ' + q.mv.length + ' movimiento(s) desde el anterior' : ''}${a.nota ? ' · ' + esc(a.nota) : ''}</div></div><div class="row" style="gap:.3rem"><span class="small muted">vs sistema</span>${difTxt(num(a.diferencia))}${q.prev ? `<span class="small muted">vs conteo anterior</span>${difTxt(q.difPrev)}` : ''}</div></button>`; }).join('')}</div>` : '<p class="small muted">Aún no hay conteos guardados.</p>'}
   </div>`;
 };
 
