@@ -433,7 +433,7 @@ html.imprimiendo,html.imprimiendo body{background:#fff!important;transition:none
 <script>
 'use strict';
 /* ============ Constantes ============ */
-const APP_VER = '3.6';
+const APP_VER = '3.6.1';
 const NOVEDADES = [
   ['3.6', 'Conteo de caja con botones + y − por denominación · Guardar conteo en bitácora y cuadrarlo contra los movimientos de caja chica con fecha y hora'],
   ['3.5', 'Finanzas: exportar el reporte del mes en PDF'],
@@ -2084,21 +2084,47 @@ A.pagarCobertura = id => {
 A.nomina = vid => {
   const v0 = vid ? db.get('vigilantes', vid) : db.all('vigilantes').filter(v => v.activo !== false)[0];
   if (!v0) return toast('Primero agrega vigilantes');
-  const el = openForm('Pago de nómina', [
+  const hoyD = new Date(), mAct = ym(), mAnt = isoDate(new Date(hoyD.getFullYear(), hoyD.getMonth() - 1, 1)).slice(0, 7);
+  const qDef = 'q' + (hoyD.getDate() <= 15 ? 1 : 2) + '-' + mAct;
+  const OPC = [
+    ['q1-' + mAct, '1ra quincena de ' + mesLabel(mAct)], ['q2-' + mAct, '2da quincena de ' + mesLabel(mAct)],
+    ['q2-' + mAnt, '2da quincena de ' + mesLabel(mAnt)], ['q1-' + mAnt, '1ra quincena de ' + mesLabel(mAnt)],
+    ['prima', 'Prima vacacional'], ['vacaciones', 'Pago de días de vacaciones'], ['aguinaldo', 'Aguinaldo ' + hoyD.getFullYear()],
+    ['extra', 'Tiempo extra / día festivo trabajado'], ['bono', 'Bono / gratificación'], ['adelanto', 'Préstamo / adelanto de sueldo'],
+    ['finiquito', 'Finiquito / liquidación'], ['otro', 'Otro (especificar)']
+  ];
+  const quincena = vg => { const i = vacInfo(vg); return vg.periodo === 'quincenal' ? num(vg.sueldo) : vg.periodo === 'mensual' ? num(vg.sueldo) / 2 : Math.round(i.sd * 15 * 100) / 100; };
+  const montoDe = (vg, k) => { const i = vacInfo(vg); return /^q[12]-/.test(k) ? quincena(vg) : k === 'prima' ? Math.round((i.prima || 0) * 100) / 100 : k === 'aguinaldo' ? Math.round((i.aguinaldo || 0) * 100) / 100 : ''; };
+  const pagada = (vgid, k) => gastosValidos().find(g => g.vigilanteId === vgid && g.nominaClave === k);
+  openForm('Pago de nómina', [
     { name: 'vigilanteId', label: 'Vigilante', type: 'select', options: vigOpts(null, false), value: v0.id },
-    { name: 'tipo', label: 'Concepto', type: 'select', options: ['Sueldo', 'Prima vacacional', 'Aguinaldo', 'Tiempo extra / día festivo', 'Préstamo / adelanto', 'Otro'] },
-    { name: 'periodo', label: 'Periodo', placeholder: 'Ej. semana del 3 al 9 de nov' },
-    { name: 'fecha', label: 'Fecha', type: 'date', value: today() },
-    { name: 'monto', label: 'Monto', type: 'number', value: v0.sueldo, required: true },
+    { name: 'tipo', label: '¿Qué se paga?', type: 'select', options: OPC, value: qDef },
+    { name: 'otro', label: 'Especifica el concepto', full: true },
+    { type: 'html', html: '<div class="fld full"><div class="small muted" id="nomInfo"></div></div>' },
+    { name: 'monto', label: 'Monto', type: 'number', value: montoDe(v0, qDef), required: true },
+    { name: 'fecha', label: 'Fecha de pago', type: 'date', value: today() },
     { name: 'cuenta', label: 'Se pagó de', type: 'select', options: cuentaOpts(), value: 'chica' },
+    { name: 'nota', label: 'Nota (opcional)', full: true, placeholder: 'Ej. incluye 1 día de cobertura' },
     { name: 'comprobante', label: 'Recibo firmado (foto)', type: 'file', full: true }
   ], v => {
     if (!(v.monto > 0)) return 'Escribe el monto';
-    db.put('gastos', { fecha: v.fecha, categoria: CATS[0], concepto: v.tipo + ' · ' + vigName(v.vigilanteId) + (v.periodo ? ' · ' + v.periodo : ''), monto: v.monto, cuenta: v.cuenta, comprobante: v.comprobante, vigilanteId: v.vigilanteId, proveedor: vigName(v.vigilanteId), estado: 'aprobado', registradoPor: quien() });
-  }, { toast: 'Pago registrado' });
-  const f = $('#mf');
-  const upd = () => { const vg = db.get('vigilantes', f.vigilanteId.value); if (!vg) return; const i = vacInfo(vg); const t = f.tipo.value; setMoney(f.monto, t === 'Sueldo' ? num(vg.sueldo) : t === 'Prima vacacional' ? (i.prima || 0) : t === 'Aguinaldo' ? (i.aguinaldo || 0) : ''); f.dispatchEvent(new Event('input')); };
-  f.vigilanteId.onchange = upd; f.tipo.onchange = upd;
+    const lbl = v.tipo === 'otro' ? v.otro : (OPC.find(o => o[0] === v.tipo) || [, v.tipo])[1];
+    if (!lbl) return 'Especifica el concepto';
+    const ya = /^q[12]-/.test(v.tipo) && pagada(v.vigilanteId, v.tipo);
+    if (ya && !FORCE_DUP) { FORCE_DUP = false; return `Esa quincena ya se pagó a ${vigName(v.vigilanteId)} el ${fdate(ya.fecha)} (${money(ya.monto)}). Si es correcto, cambia el concepto a "Otro".`; }
+    db.put('gastos', { fecha: v.fecha, categoria: CATS[0], concepto: lbl + ' · ' + vigName(v.vigilanteId), detalle: v.nota, monto: v.monto, cuenta: v.cuenta, comprobante: v.comprobante, vigilanteId: v.vigilanteId, nominaClave: v.tipo === 'otro' ? '' : v.tipo, proveedor: vigName(v.vigilanteId), estado: 'aprobado', registradoPor: quien() });
+  }, { toast: 'Pago de nómina registrado',
+    onLive: f => {
+      const vg = db.get('vigilantes', f.elements.vigilanteId.value); if (!vg) return; const k = f.elements.tipo.value, i = vacInfo(vg);
+      f.elements.otro.closest('.fld').style.display = k === 'otro' ? '' : 'none';
+      const key = vg.id + '|' + k; if (f.dataset.lk !== key) { f.dataset.lk = key; setMoney(f.elements.monto, montoDe(vg, k)); }
+      const ya = /^q[12]-/.test(k) && pagada(vg.id, k);
+      const inf = document.getElementById('nomInfo'); if (inf) inf.innerHTML = `Sueldo: ${money(vg.sueldo)} ${esc(vg.periodo || '')} · quincena ${money(quincena(vg))} · salario diario ${money(i.sd)}`
+        + (k === 'prima' ? (i.sinFecha ? ' · falta su fecha de ingreso para calcular la prima' : ` · prima del periodo (${i.derecho} días × 25%)`) : '')
+        + (k === 'aguinaldo' ? (i.sinFecha ? ' · falta su fecha de ingreso' : ` · 15 días proporcionales (${i.diasAnio} días trabajados en el año)`) : '')
+        + (k === 'vacaciones' ? ` · ${i.pend || 0} día(s) pendientes; escribe el monto (días × ${money(i.sd)})` : '')
+        + (ya ? `<div style="color:var(--bad);font-weight:600;margin-top:.3rem">Ya se pagó esta quincena el ${fdate(ya.fecha)} (${money(ya.monto)})</div>` : '');
+    } });
 };
 
 /* ---- Servicios ---- */
